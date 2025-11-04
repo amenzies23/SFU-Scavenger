@@ -32,7 +32,7 @@ fun SFUScavengerApp() {
         Surface {
             NavHost(navController, startDestination = "login") {
                 composable("login") { SignInScreen(navController) }
-                composable("signup") { SignUpScreen() }
+                composable("signup") { SignUpScreen(navController) }
                 composable("home") { HomeScreen() }
             }
         }
