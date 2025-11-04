@@ -1,10 +1,10 @@
-package com.aark.sfuscavenger.ui.lobby
+package com.aark.sfuscavenger.ui.join
 
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.navigation.NavController
 
 @Composable
-fun LobbyScreen(navController: NavController) {
-    Text("Lobby Screen")
+fun JoinScreen(navController: NavController) {
+    Text("Join Screen")
 }
