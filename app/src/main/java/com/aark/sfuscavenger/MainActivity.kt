@@ -11,6 +11,9 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.aark.sfuscavenger.ui.home.HomeScreen
+import com.aark.sfuscavenger.ui.login.SignIn
+import com.aark.sfuscavenger.ui.login.SignInScreen
+import com.aark.sfuscavenger.ui.login.SignUpScreen
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -27,7 +30,9 @@ fun SFUScavengerApp() {
     val navController = rememberNavController()
     MaterialTheme {
         Surface {
-            NavHost(navController, startDestination = "home") {
+            NavHost(navController, startDestination = "login") {
+                composable("login") { SignInScreen(navController) }
+                composable("signup") { SignUpScreen() }
                 composable("home") { HomeScreen() }
             }
         }
