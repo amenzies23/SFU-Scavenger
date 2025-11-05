@@ -55,7 +55,7 @@ fun SFUScavengerApp() {
                 ) {
                     composable("login") { SignInScreen(navController) }
                     composable("signup") { SignUpScreen(navController) }
-                    composable("home") { HomeScreen() }
+                    composable("home") { HomeScreen(navController) }
                     composable("create") { CreateScreen(navController) }
                     composable("join") { JoinScreen(navController) }
                     composable("social") { SocialScreen(navController) }
