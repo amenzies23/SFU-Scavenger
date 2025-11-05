@@ -4,6 +4,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.graphics.Color
 
 @Composable
 fun HomeScreen() {
@@ -14,6 +15,10 @@ fun HomeScreen() {
                     .fillMaxSize()
                     .padding(paddingValues)
             ) {
+                Text(
+                    text = "Home Screen",
+                    color = Color.Cyan,
+                )
             }
         }
     )
