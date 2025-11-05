@@ -66,7 +66,13 @@ class SignUp : ComponentActivity() {
 }
 
 @Composable
-fun SignUpScreen(navController: NavHostController) {
+fun SignUpScreen(
+    navController: NavHostController,
+    loading: Boolean,
+    error: String?,
+    onSignUp: (String, String) -> Unit,
+    onGoToLogin: () -> Unit)
+{
 
     var emailValue by remember {
         mutableStateOf("")
@@ -199,7 +205,8 @@ fun SignUpScreen(navController: NavHostController) {
             Spacer(modifier = Modifier.height(25.dp))
 
             Button(
-                onClick = {},
+                onClick = {onSignUp(emailValue, passwordValue)},
+                enabled = !loading && emailValue.isNotBlank() && passwordValue.length >= 6,
                 colors = ButtonDefaults.buttonColors(
                     containerColor = Maroon,
                     contentColor = White
@@ -209,12 +216,8 @@ fun SignUpScreen(navController: NavHostController) {
                 contentPadding = PaddingValues(vertical = 0.dp)
 
             ) {
-                Text(
-                    text = "Sign Up",
-                    color = White,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 18.sp
-                )
+                Text(if (loading) "Creating..." else "Sign Up",
+                    fontWeight = FontWeight.Bold, fontSize = 18.sp)
             }
 
             Spacer(modifier = Modifier.height(4.dp))
@@ -239,9 +242,7 @@ fun SignUpScreen(navController: NavHostController) {
                         .clickable(
                             indication = null,
                             interactionSource = remember { MutableInteractionSource() }
-                        ) {
-                            navController.navigate("login")
-                        }
+                        ) { onGoToLogin() }
                 )
             }
         }
@@ -252,8 +253,14 @@ fun SignUpScreen(navController: NavHostController) {
 @Preview(showBackground = true)
 @Composable
 fun SignUpPreview() {
-    val navController = rememberNavController()
+    val nav = rememberNavController()
     SFUScavengerTheme {
-        SignUpScreen(navController)
+        SignUpScreen(
+            navController = nav,
+            loading = false,
+            error = null,
+            onSignUp = { _, _ -> },
+            onGoToLogin = {}
+        )
     }
 }
