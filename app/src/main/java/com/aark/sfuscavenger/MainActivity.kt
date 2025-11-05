@@ -28,7 +28,8 @@ import com.aark.sfuscavenger.ui.login.SignUpScreen
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-
+import com.aark.sfuscavenger.ui.login.AuthViewModel
+import androidx.lifecycle.viewmodel.compose.viewModel
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -42,8 +43,7 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun SFUScavengerApp() {
     val navController = rememberNavController()
-    val vm: com.aark.sfuscavenger.ui.login.AuthViewModel =
-        androidx.lifecycle.viewmodel.compose.viewModel()
+    val vm: AuthViewModel = viewModel()
     val state by vm.state.collectAsStateWithLifecycle()
 
     LaunchedEffect(state.isLoggedIn) {

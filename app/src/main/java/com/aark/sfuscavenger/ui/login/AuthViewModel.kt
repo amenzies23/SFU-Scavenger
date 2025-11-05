@@ -32,7 +32,7 @@ class AuthViewModel (private val repo: AuthRepository = AuthRepository()) : View
     // Functions for our screen to invoke
     fun signIn(email: String, password: String) = runAuth { repo.signIn(email, password) }
     fun signUp(email: String, password: String) = runAuth { repo.signUp(email, password) }
-    // Not being used yet
+    // TODO: Use this in the social (maybe?) tab to log out
     fun signOut() = repo.signOut()
 
     private fun runAuth(block: suspend () -> Unit) = viewModelScope.launch {
