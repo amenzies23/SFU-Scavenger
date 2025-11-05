@@ -30,11 +30,9 @@ fun BottomNavBar(navController: NavHostController) {
         BottomNavItem("Join", "join", Icons.Filled.Lock),
         BottomNavItem("Social", "social", Icons.Filled.Person)
     )
-
     NavigationBar(containerColor = Color(0xFFA6192E)) {
         val navBackStackEntry by navController.currentBackStackEntryAsState()
         val currentRoute = navBackStackEntry?.destination?.route
-
         items.forEach { item ->
 
             NavigationBarItem(
@@ -45,6 +43,7 @@ fun BottomNavBar(navController: NavHostController) {
                         navController.navigate(item.route)
                     }
                 },
+
                 icon = {
                     Icon(
                         imageVector = item.icon,
