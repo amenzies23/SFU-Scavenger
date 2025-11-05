@@ -71,7 +71,13 @@ class SignIn : ComponentActivity() {
 }
 
 @Composable
-fun SignInScreen(navController: NavHostController) {
+fun SignInScreen(
+    navController: NavHostController,
+    loading: Boolean,
+    error: String?,
+    onLogin: (String, String) -> Unit,
+    onGoToSignUp: () -> Unit)
+{
 
     var emailValue by remember {
         mutableStateOf("")
@@ -204,7 +210,8 @@ fun SignInScreen(navController: NavHostController) {
             Spacer(modifier = Modifier.height(25.dp))
 
             Button(
-                onClick = {},
+                onClick = {onLogin(emailValue, passwordValue)},
+                enabled = !loading && emailValue.isNotBlank() && passwordValue.length >= 6,
                 colors = ButtonDefaults.buttonColors(
                     containerColor = Maroon,
                     contentColor = White
@@ -214,12 +221,8 @@ fun SignInScreen(navController: NavHostController) {
                 contentPadding = PaddingValues(vertical = 0.dp)
 
             ) {
-                Text(
-                    text = "Sign In",
-                    color = White,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 18.sp
-                )
+                Text(if (loading) "Signing in..." else "Sign In",
+                    fontWeight = FontWeight.Bold, fontSize = 18.sp)
             }
 
             Spacer(modifier = Modifier.height(4.dp))
@@ -244,22 +247,24 @@ fun SignInScreen(navController: NavHostController) {
                         .clickable (
                             indication = null,
                             interactionSource = remember { MutableInteractionSource() }
-                        ){
-                            navController.navigate("signup")
-                        }
+                        ){ onGoToSignUp()}
                 )
             }
         }
-
     }
-
 }
 
 @Preview(showBackground = true)
 @Composable
 fun SignInPreview() {
-    val navController = rememberNavController()
+    val nav = rememberNavController()
     SFUScavengerTheme {
-        SignInScreen(navController)
+        SignInScreen(
+            navController = nav,
+            loading = false,
+            error = null,
+            onLogin = { _, _ -> },
+            onGoToSignUp = {}
+        )
     }
 }

@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "55605455516",
+    "project_id": "sfu-scavenger-610ec",
+    "storage_bucket": "sfu-scavenger-610ec.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:55605455516:android:5500efa77eb4681204db59",
+        "android_client_info": {
+          "package_name": "com.aark.sfuscavenger"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAlEPzl6UyLv5ulGEHNtJ3Nk_nbOFpaT_U"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
