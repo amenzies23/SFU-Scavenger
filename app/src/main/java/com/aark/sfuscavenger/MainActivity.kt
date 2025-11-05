@@ -10,6 +10,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.navigation.NavHostController
+import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
@@ -20,10 +21,14 @@ import com.aark.sfuscavenger.ui.lobby.LobbyScreen
 import com.aark.sfuscavenger.ui.create.CreateScreen
 import com.aark.sfuscavenger.ui.join.JoinScreen
 import com.aark.sfuscavenger.ui.social.SocialScreen
+import com.aark.sfuscavenger.ui.login.SignIn
+import com.aark.sfuscavenger.ui.login.SignInScreen
+import com.aark.sfuscavenger.ui.login.SignUpScreen
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        installSplashScreen()
         setContent {
             SFUScavengerApp()
         }
@@ -38,6 +43,12 @@ fun SFUScavengerApp() {
         bottomBar = {
             if (showBottomNavBar(navController)) {
                 BottomNavBar(navController)
+    MaterialTheme {
+        Surface {
+            NavHost(navController, startDestination = "login") {
+                composable("login") { SignInScreen(navController) }
+                composable("signup") { SignUpScreen(navController) }
+                composable("home") { HomeScreen() }
             }
         }
     ) { innerPadding ->
