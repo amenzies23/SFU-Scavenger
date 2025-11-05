@@ -18,7 +18,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.foundation.border
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
@@ -29,13 +31,25 @@ import androidx.navigation.NavController
 import coil.compose.AsyncImage
 import com.aark.sfuscavenger.R
 import com.aark.sfuscavenger.ui.theme.AppColors
+import com.aark.sfuscavenger.ui.theme.Beige
 
 @Composable
 fun SocialScreen(navController: NavController,
     viewModel: ProfileViewModel = viewModel()
 ) {
     Column(
-        modifier = Modifier.fillMaxSize()
+        modifier = Modifier
+            .fillMaxSize()
+            .background(
+                brush = Brush.verticalGradient(
+                    // based off of figma design
+                    colorStops = arrayOf(
+                        0.0f to Color(0xFFF3ECE7),  // Beige at top (0%)
+                        0.66f to Color(0xFFD3C5BB), // Beige at 44%
+                        1.0f to Color(0xFFD3C5BB)   // Light cream at bottom (100%)
+                    )
+                )
+            )
     ) {
         // Social top bar with settings 
         Row(
@@ -115,7 +129,7 @@ fun ProfileInformation(viewModel: ProfileViewModel) {
         
         Text(
             text = displayNameText,
-            fontSize = 24.sp,
+            fontSize = 30.sp,
             fontWeight = FontWeight.Bold,
             color = Color.Black,
             modifier = Modifier.padding(top = 16.dp)
@@ -146,7 +160,7 @@ fun ProfileInformation(viewModel: ProfileViewModel) {
             // Level text on top
             Text(
                 text = "Level ${profileState.userLevel}",
-                fontSize = 16.sp,
+                fontSize = 20.sp,
                 fontWeight = FontWeight.Bold,
                 color = Color.Black,
                 modifier = Modifier.padding(bottom = 8.dp)
@@ -156,25 +170,29 @@ fun ProfileInformation(viewModel: ProfileViewModel) {
             Box(
                 modifier = Modifier.fillMaxWidth()
             ) {
-                // Calculate progress based on XP (0-50)
-                val maxXP = 50
+                // Calculate progress based on XP
+                val maxXP = 50 // TODO: Implement it to make it increase with level
                 val progress = (profileState.totalXP.toFloat() / maxXP).coerceIn(0f, 1f)
                 
                 // Custom progress bar
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(20.dp)
-                        .clip(RoundedCornerShape(4.dp))
-                        .background(Color(0xFFE0E0E0))
+                        .height(24.dp)
                         .clip(RoundedCornerShape(16.dp))
+                        .background(Color(0xFFFEFAF4))
+                        .border(
+                            width = 2.dp,
+                            color = Color(0xFF8A8079),
+                            shape = RoundedCornerShape(16.dp)
+                        )
                 ) {
                     // Filled portion based on progress
                     Box(
                         modifier = Modifier
                             .fillMaxWidth(progress)
                             .fillMaxSize()
-                            .background(AppColors.Red)
+                            .background(Color(0xFFFEFAF4))
                             .clip(RoundedCornerShape(16.dp))
                     )
                 }

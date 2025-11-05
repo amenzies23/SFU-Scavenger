@@ -50,7 +50,7 @@ fun SFUScavengerApp() {
             Surface {
                 NavHost(
                     navController = navController,
-                    startDestination = "lobby",
+                    startDestination = "social",
                     modifier = Modifier.padding(innerPadding)
                 ) {
                     composable("login") { SignInScreen(navController) }
