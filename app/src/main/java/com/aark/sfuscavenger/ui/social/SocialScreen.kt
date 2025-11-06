@@ -4,6 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -12,6 +13,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.Image
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Text
 import androidx.compose.ui.res.painterResource
 import androidx.compose.runtime.Composable
@@ -30,12 +33,16 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
 import com.aark.sfuscavenger.R
+import com.aark.sfuscavenger.ui.login.AuthViewModel
 import com.aark.sfuscavenger.ui.theme.AppColors
 import com.aark.sfuscavenger.ui.theme.Beige
+import com.aark.sfuscavenger.ui.theme.Maroon
+import com.aark.sfuscavenger.ui.theme.White
 
 @Composable
 fun SocialScreen(navController: NavController,
-    viewModel: ProfileViewModel = viewModel()
+    viewModel: ProfileViewModel = viewModel(),
+    authViewModel: AuthViewModel = viewModel()
 ) {
     Column(
         modifier = Modifier
@@ -77,6 +84,28 @@ fun SocialScreen(navController: NavController,
         }
         
         ProfileInformation(viewModel)
+        
+        // Logout button
+        Spacer(modifier = Modifier.weight(1f))
+        Button(
+            onClick = {
+                authViewModel.signOut()
+            },
+            colors = ButtonDefaults.buttonColors(
+                containerColor = Maroon,
+                contentColor = White
+            ),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp)
+                .padding(bottom = 32.dp)
+        ) {
+            Text(
+                text = "Log Out",
+                fontWeight = FontWeight.Bold,
+                fontSize = 18.sp
+            )
+        }
     }
 }
 
