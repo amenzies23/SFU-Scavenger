@@ -2,7 +2,7 @@ package com.aark.sfuscavenger.ui.login
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.aark.sfuscavenger.repositories.auth.AuthRepository
+import com.aark.sfuscavenger.repositories.AuthRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -42,6 +42,10 @@ class AuthViewModel (private val repo: AuthRepository = AuthRepository()) : View
         } catch (e: Exception) {
             _state.update { it.copy(loading = false, error = userMessage(e)) }
         }
+    }
+
+    fun updateDisplayName(name: String) = runAuth {
+        repo.updateDisplayName(name)
     }
 
     // To display messages with any exceptions thrown
