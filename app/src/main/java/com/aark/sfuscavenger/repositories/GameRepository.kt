@@ -73,4 +73,9 @@ class GameRepository(
         // Ensure id matches the document id
         return game?.copy(id = snapshot.id)
     }
+
+    suspend fun getGameName(gameId: String): String? {
+        val snap = db.collection("games").document(gameId).get().await()
+        return snap.getString("name")
+    }
 }
