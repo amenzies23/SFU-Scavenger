@@ -1,5 +1,6 @@
 package com.aark.sfuscavenger.data.models
 import com.google.firebase.Timestamp
+import com.google.firebase.firestore.GeoPoint
 
 /**
  * To store all the information about a game
@@ -17,5 +18,7 @@ data class Game(
     val joinMode: String = "code", // "code" | "open"
     val joinCode: String? = null,
     val createdAt: Timestamp? = null,
-    val updatedAt: Timestamp? = null
+    val updatedAt: Timestamp? = null,
+    val location: GeoPoint? = null, // location for games, helpful for markers
+    val geohash: String? = null // geohash, apparently helpful for radius based queries
 )
