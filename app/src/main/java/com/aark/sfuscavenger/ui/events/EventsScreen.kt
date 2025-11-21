@@ -63,51 +63,6 @@ fun EventsScreen(navController: NavController) {
     }
 }
 
-
-//@Composable
-//private fun JoinTab(navController: NavController) {
-//    Text("Join Tab")
-//}
-
-//@OptIn(ExperimentalMaterial3Api::class)
-//@Composable
-//private fun TopBar(
-//    selectedTab: Int,
-//    onTabSelected: (Int) -> Unit,
-//    modifier: Modifier = Modifier,
-//    scrollBehavior: TopAppBarScrollBehavior,
-//) {
-//    TopAppBar(
-//        modifier = modifier,
-//        scrollBehavior = scrollBehavior,
-//        colors = TopAppBarDefaults.topAppBarColors(
-//            containerColor = MaterialTheme.colorScheme.primary
-//        ),
-//        title = {
-//        },
-//        actions = {
-//            Row(
-//                verticalAlignment = Alignment.CenterVertically
-//            ) {
-//                TextButton(onClick = { onTabSelected(0) }) {
-//                    Text(
-//                        text = "Join",
-//                        color = if (selectedTab == 0) MaterialTheme.colorScheme.onPrimary
-//                        else MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.6f)
-//                    )
-//                }
-//                TextButton(onClick = { onTabSelected(1) }) {
-//                    Text(
-//                        text = "Create",
-//                        color = if (selectedTab == 1) MaterialTheme.colorScheme.onPrimary
-//                        else MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.6f)
-//                    )
-//                }
-//            }
-//        }
-//    )
-//}
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun TopBar(
