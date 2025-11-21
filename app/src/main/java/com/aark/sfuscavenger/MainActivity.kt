@@ -25,6 +25,7 @@ import com.aark.sfuscavenger.ui.login.SignInScreen
 import com.aark.sfuscavenger.ui.login.SignUpScreen
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.LaunchedEffect
+import androidx.core.view.WindowInsetsControllerCompat
 import com.aark.sfuscavenger.ui.login.AuthViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.aark.sfuscavenger.ui.history.HistoryScreen
@@ -32,6 +33,11 @@ import com.aark.sfuscavenger.ui.history.HistoryScreen
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        // Make status bar icons dark
+        val wic = WindowInsetsControllerCompat(window, window.decorView)
+        wic.isAppearanceLightStatusBars = true
+
         installSplashScreen()
         setContent {
             SFUScavengerApp()
