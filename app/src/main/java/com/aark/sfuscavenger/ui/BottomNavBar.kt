@@ -27,7 +27,7 @@ fun BottomNavBar(navController: NavHostController) {
         BottomNavItem("Home", "home", Icons.Filled.Home),
         BottomNavItem("Events", "events", Icons.Filled.Add),
         // Replace lock icon later
-        BottomNavItem("Join", "join", Icons.Filled.Lock),
+        BottomNavItem("History", "history", Icons.Filled.Lock),
         BottomNavItem("Social", "social", Icons.Filled.Person)
     )
 

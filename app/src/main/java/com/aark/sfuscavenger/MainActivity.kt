@@ -27,6 +27,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.LaunchedEffect
 import com.aark.sfuscavenger.ui.login.AuthViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.aark.sfuscavenger.ui.history.HistoryScreen
+
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -85,7 +87,7 @@ fun SFUScavengerApp() {
                     }
                     composable("home") { HomeScreen(navController) }
                     composable("events") { EventsScreen(navController) }
-                    composable("join") { EventsScreen(navController) }
+                    composable("history") { HistoryScreen(navController) }
                     composable("social") { SocialScreen(navController) }
                     composable("lobby") { LobbyScreen(navController) }
                 }
@@ -99,5 +101,5 @@ fun SFUScavengerApp() {
 fun showBottomNavBar(navController: NavHostController): Boolean {
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
-    return currentRoute in listOf("home", "events", "join", "social")
+    return currentRoute in listOf("home", "events", "history", "social")
 }
