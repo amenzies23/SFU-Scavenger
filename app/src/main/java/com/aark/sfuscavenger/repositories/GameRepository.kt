@@ -91,4 +91,9 @@ class GameRepository(
         }
         return games
     }
+    
+    suspend fun getGameName(gameId: String): String? {
+        val snap = db.collection("games").document(gameId).get().await()
+        return snap.getString("name")
+    }
 }
