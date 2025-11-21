@@ -17,17 +17,14 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.aark.sfuscavenger.ui.BottomNavBar
-import com.aark.sfuscavenger.ui.create.CreateScreen
-import com.aark.sfuscavenger.ui.join.JoinScreen
+import com.aark.sfuscavenger.ui.events.EventsScreen
 import com.aark.sfuscavenger.ui.lobby.LobbyScreen
 import com.aark.sfuscavenger.ui.social.SocialScreen
 import com.aark.sfuscavenger.ui.home.HomeScreen
-import com.aark.sfuscavenger.ui.login.SignIn
 import com.aark.sfuscavenger.ui.login.SignInScreen
 import com.aark.sfuscavenger.ui.login.SignUpScreen
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
 import com.aark.sfuscavenger.ui.login.AuthViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
 class MainActivity : ComponentActivity() {
@@ -87,8 +84,8 @@ fun SFUScavengerApp() {
                         )
                     }
                     composable("home") { HomeScreen(navController) }
-                    composable("create") { CreateScreen(navController) }
-                    composable("join") { JoinScreen(navController) }
+                    composable("events") { EventsScreen(navController) }
+                    composable("join") { EventsScreen(navController) }
                     composable("social") { SocialScreen(navController) }
                     composable("lobby") { LobbyScreen(navController) }
                 }
@@ -102,5 +99,5 @@ fun SFUScavengerApp() {
 fun showBottomNavBar(navController: NavHostController): Boolean {
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
-    return currentRoute in listOf("home", "create", "join", "social")
+    return currentRoute in listOf("home", "events", "join", "social")
 }

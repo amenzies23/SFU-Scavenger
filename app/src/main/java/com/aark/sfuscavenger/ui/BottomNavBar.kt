@@ -25,7 +25,7 @@ data class BottomNavItem(
 fun BottomNavBar(navController: NavHostController) {
     val items = listOf(
         BottomNavItem("Home", "home", Icons.Filled.Home),
-        BottomNavItem("Create", "create", Icons.Filled.Add),
+        BottomNavItem("Events", "events", Icons.Filled.Add),
         // Replace lock icon later
         BottomNavItem("Join", "join", Icons.Filled.Lock),
         BottomNavItem("Social", "social", Icons.Filled.Person)
