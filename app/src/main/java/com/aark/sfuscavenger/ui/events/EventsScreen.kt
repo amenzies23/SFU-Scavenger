@@ -148,7 +148,8 @@ private fun JoinTab(navController: NavController,
                     vm: EventsViewModel,
                     modifier: Modifier = Modifier
 ) {
-    val games = vm.games.collectAsState()
+//    val games = vm.games.collectAsState()
+    val publicGames = vm.publicGames.collectAsState()
 //    val loading = vm.loading.collectAsState()
     val error = vm.error.collectAsState()
 
@@ -162,7 +163,7 @@ private fun JoinTab(navController: NavController,
 //            .padding(16.dp)
     ){
         LazyColumn {
-            items(games.value) { game ->
+            items(publicGames.value) { game ->
                 GameRow(
                     game = game,
                     onJoinClick = {
