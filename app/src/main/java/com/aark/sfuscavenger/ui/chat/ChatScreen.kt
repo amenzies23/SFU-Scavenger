@@ -49,21 +49,14 @@ fun ChatScreen(
         }
     }
 
+    // TODO: Fix chat UI issue when keyboard opens, it pushes the whole bottom navbar up
     Column(
         modifier = Modifier
             .fillMaxSize()
             .background(Color(0xFFF3ECE7))
+            .imePadding()
             .padding(16.dp)
     ) {
-        // Header
-        Text(
-            text = "Team Chat",
-            fontSize = 28.sp,
-            fontWeight = FontWeight.Bold,
-            color = Color(0xFF7B1F1F),
-            modifier = Modifier.padding(bottom = 16.dp)
-        )
-
         uiState.error?.let { err ->
             Text(
                 text = err,

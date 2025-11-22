@@ -83,6 +83,7 @@ class TeamRepository(
         // Remove user from old team if present
         removeUserFromOtherTeams(gameId, uid, exceptTeamId = newTeamRef.id)
 
+        setUserMembership(gameId, newTeamRef.id)
         return newTeamRef.id
     }
 
@@ -113,6 +114,7 @@ class TeamRepository(
             .await()
 
         teamRef.update("memberCount", FieldValue.increment(1)).await()
+        setUserMembership(gameId, teamId)
     }
 
     /**
@@ -367,5 +369,36 @@ class TeamRepository(
         }
 
         awaitClose { registration.remove() }
+    }
+
+    private suspend fun setUserMembership(gameId: String, teamId: String) {
+        val uid = auth.currentUser?.uid ?: return
+
+        val membershipRef = db.collection("users")
+            .document(uid)
+            .collection("memberships")
+            .document(gameId)
+
+        val data = mapOf(
+            "gameId" to gameId,
+            "teamId" to teamId,
+            "updatedAt" to Timestamp.now()
+        )
+
+        membershipRef.set(data, SetOptions.merge()).await()
+    }
+
+    /**
+     * Removes membership doc for this game (not used yet)
+     */
+    private suspend fun clearUserMembership(gameId: String) {
+        val uid = auth.currentUser?.uid ?: return
+
+        val membershipRef = db.collection("users")
+            .document(uid)
+            .collection("memberships")
+            .document(gameId)
+
+        membershipRef.delete().await()
     }
 }

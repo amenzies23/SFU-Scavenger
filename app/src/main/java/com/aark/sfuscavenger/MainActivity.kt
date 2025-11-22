@@ -9,6 +9,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.navigation.NavHostController
@@ -25,9 +26,12 @@ import com.aark.sfuscavenger.ui.login.SignInScreen
 import com.aark.sfuscavenger.ui.login.SignUpScreen
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.core.view.WindowInsetsControllerCompat
 import com.aark.sfuscavenger.ui.login.AuthViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.aark.sfuscavenger.ui.components.TopBar
 import com.aark.sfuscavenger.ui.history.HistoryScreen
 
 class MainActivity : ComponentActivity() {
@@ -50,6 +54,7 @@ fun SFUScavengerApp() {
     val navController = rememberNavController()
     val vm: AuthViewModel = viewModel()
     val state by vm.state.collectAsStateWithLifecycle()
+    var showProfileSettings by rememberSaveable { mutableStateOf(false) }
 
     LaunchedEffect(state.isLoggedIn) {
         if (state.isLoggedIn) {
@@ -59,7 +64,29 @@ fun SFUScavengerApp() {
         }
     }
 
+    // Tracking the current route to display in the TopBar component
+    val navBackStackEntry by navController.currentBackStackEntryAsState()
+    val currentRoute = navBackStackEntry?.destination?.route
+
+    val topBarTitle: String? = when {
+        currentRoute == "home" -> "Home"
+        currentRoute == "events" -> "Events"
+        currentRoute == "history" -> "History"
+        currentRoute == "profile" -> "Profile"
+        currentRoute?.startsWith("lobby/") == true -> "Lobby"
+        else -> null
+    }
+
     Scaffold(
+        topBar = {
+            if (topBarTitle != null) {
+                TopBar(
+                    title = topBarTitle,
+                    showSettings = (currentRoute == "profile"),
+                    onSettingsClick = { showProfileSettings = true }
+                )
+            }
+        },
         bottomBar = {
             if (showBottomNavBar(navController)) {
                 BottomNavBar(navController)
@@ -94,7 +121,13 @@ fun SFUScavengerApp() {
                     composable("home") { HomeScreen(navController) }
                     composable("events") { EventsScreen(navController) }
                     composable("history") { HistoryScreen(navController) }
-                    composable("profile") { ProfileScreen(navController) }
+                    composable("profile") {
+                        ProfileScreen(
+                            navController = navController,
+                            showSettings = showProfileSettings,
+                            onRequestCloseSettings = { showProfileSettings = false }
+                        )
+                    }
                     composable(
                         route = "lobby/{gameId}"
                     ) { backStackEntry ->

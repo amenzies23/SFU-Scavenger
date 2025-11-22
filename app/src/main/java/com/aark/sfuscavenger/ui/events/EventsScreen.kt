@@ -66,9 +66,6 @@ fun EventsScreen(navController: NavController, vm: EventsViewModel = viewModel()
     )
 
     Scaffold(
-        topBar = {
-            TopBar(title = "Events")
-        },
         containerColor = Beige
     ) { paddingValues ->
         EventsContent(

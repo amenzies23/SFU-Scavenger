@@ -12,7 +12,7 @@ data class Game(
     val name: String = "",
     val ownerId: String = "",
     val description: String ="",
-    val status: String = "draft", // I'm thinking "draft" | "live" | "ended"
+    val status: String = "draft", // I'm thinking "draft" | "live" | "started" | "ended"
     val startTime: Timestamp? = null,
     val endTime: Timestamp? = null,
     val joinMode: String = "code", // "code" | "open"

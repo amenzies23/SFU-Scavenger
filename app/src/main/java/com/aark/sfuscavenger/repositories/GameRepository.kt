@@ -4,6 +4,7 @@ import androidx.compose.runtime.snapshotFlow
 import com.aark.sfuscavenger.data.models.Game
 import com.google.firebase.Timestamp
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FieldPath
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.GeoPoint
 import kotlinx.coroutines.flow.callbackFlow
@@ -116,4 +117,33 @@ class GameRepository(
         }
     }
 
+
+    /**
+     * Returns all games with status == "started" that the current user is a member of
+     */
+    suspend fun getLiveGamesForCurrentUser(): List<Game> {
+        val uid = auth.currentUser?.uid ?: return emptyList()
+
+        val membershipsSnap = db.collection("users")
+            .document(uid)
+            .collection("memberships")
+            .get()
+            .await()
+
+        if (membershipsSnap.isEmpty) return emptyList()
+
+        val gameIds = membershipsSnap.documents.map { it.id }
+
+        val snapshot = gamesCollection
+            .whereIn(FieldPath.documentId(), gameIds)
+            .whereEqualTo("status", "started")
+            .get()
+            .await()
+
+        if (snapshot.isEmpty) return emptyList()
+
+        return snapshot.documents.mapNotNull { doc ->
+            doc.toObject(Game::class.java)?.copy(id = doc.id)
+        }
+    }
 }
