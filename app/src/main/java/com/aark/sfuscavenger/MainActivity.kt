@@ -35,8 +35,8 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
 
         // Make status bar icons dark
-        val wic = WindowInsetsControllerCompat(window, window.decorView)
-        wic.isAppearanceLightStatusBars = true
+//        val wic = WindowInsetsControllerCompat(window, window.decorView)
+//        wic.isAppearanceLightStatusBars = true
 
         installSplashScreen()
         setContent {
