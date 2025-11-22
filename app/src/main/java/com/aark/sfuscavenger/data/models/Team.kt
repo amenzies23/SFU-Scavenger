@@ -12,5 +12,6 @@ data class Team(
     val score: Int = 0, // Might want some score tracker? Idk
     val memberCount: Int = 0,
     val latestSubmissionAt: Timestamp? = null,
-    val createdAt: Timestamp? = null
+    val createdAt: Timestamp? = null,
+    val active: Boolean = true
 )

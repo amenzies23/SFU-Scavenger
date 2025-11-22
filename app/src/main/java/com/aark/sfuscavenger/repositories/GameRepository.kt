@@ -4,6 +4,7 @@ import com.aark.sfuscavenger.data.models.Game
 import com.google.firebase.Timestamp
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.GeoPoint
 import kotlinx.coroutines.tasks.await
 import kotlin.random.Random
 
@@ -31,12 +32,16 @@ class GameRepository(
     // Creates a new game document, returns the document id on success
     suspend fun createGame(
         name: String,
+        lat: Double,
+        lng: Double,
         joinMode: String = "code",
         joinCode: String? = null,
         description: String = ""
     ): String {
         val ownerId = auth.currentUser?.uid
             ?: throw IllegalStateException("User must be logged in to create a game")
+        val geo = GeoPoint(lat, lng)
+        val geohash = "" // TODO
 
         // Let Firestore generate the document id
         val docRef = gamesCollection.document()
@@ -54,7 +59,9 @@ class GameRepository(
             joinMode = joinMode,
             joinCode = finalJoinCode,
             description = description,
-            createdAt = Timestamp.now()
+            createdAt = Timestamp.now(),
+            location = geo,
+            geohash = geohash
         )
 
         // Write to Firestore
@@ -72,5 +79,21 @@ class GameRepository(
 
         // Ensure id matches the document id
         return game?.copy(id = snapshot.id)
+    }
+
+    // Get all games
+    suspend fun getAllGames(): List<Game> {
+        val snapshot = gamesCollection.get().await()
+        if (snapshot.isEmpty) return emptyList()
+
+        val games = snapshot.documents.mapNotNull { doc ->
+            doc.toObject(Game::class.java)?.copy(id = doc.id)
+        }
+        return games
+    }
+    
+    suspend fun getGameName(gameId: String): String? {
+        val snap = db.collection("games").document(gameId).get().await()
+        return snap.getString("name")
     }
 }

@@ -13,15 +13,18 @@ class TeamRepository(
     private val db: FirebaseFirestore = FirebaseFirestore.getInstance(),
     private val auth: FirebaseAuth = FirebaseAuth.getInstance()
 ) {
+
     suspend fun getUserTeamId(gameId: String): String? {
         val uid = auth.currentUser?.uid ?: return null
 
         val teamsRef = db.collection("games")
             .document(gameId)
             .collection("teams")
+            .whereEqualTo("active", true)
 
         val snapshot = teamsRef.get().await()
 
+        // Search through all teams to find which one the user is in
         for (doc in snapshot.documents) {
             val memberDoc = doc.reference
                 .collection("members")
