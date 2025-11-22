@@ -1,6 +1,7 @@
 package com.aark.sfuscavenger.repositories
 
 import com.aark.sfuscavenger.data.models.Game
+import com.aark.sfuscavenger.data.models.TeamSummary
 import com.google.firebase.Timestamp
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
@@ -95,5 +96,16 @@ class GameRepository(
     suspend fun getGameName(gameId: String): String? {
         val snap = db.collection("games").document(gameId).get().await()
         return snap.getString("name")
+    }
+
+    
+    suspend fun getTeamSummary(gameId: String, teamId: String): TeamSummary? {
+        val snapshot = gamesCollection
+            .document(gameId)
+            .collection("teams")
+            .document(teamId)
+            .get()
+            .await()
+        return snapshot.toObject(TeamSummary::class.java)?.copy(id = snapshot.id)
     }
 }
