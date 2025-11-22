@@ -31,15 +31,16 @@ class HistoryViewModel(
     private val _uiState = MutableStateFlow(HistoryUiState())
     val uiState: StateFlow<HistoryUiState> = _uiState
 
-    private val placeholderCards = listOf(
-        HistoryCard(
-            gameId = "demoGame",
-            teamId = null,
-            title = "Campus Quest",
-            placement = "1st place",
-            joinedAt = System.currentTimeMillis()
-        )
-    )
+// For testing purposes, use this to look like what it'll look like in history!
+//    private val placeholderCards = listOf(
+//        HistoryCard(
+//            gameId = "demoGame",
+//            teamId = null,
+//            title = "Campus Quest",
+//            placement = "1st place",
+//            joinedAt = System.currentTimeMillis()
+//        )
+//    )
 
     init {
         refreshHistory()
@@ -67,11 +68,11 @@ class HistoryViewModel(
                     )
                 }.sortedByDescending { it.joinedAt }
             }.onSuccess { cards ->
-                val displayCards = cards.ifEmpty { placeholderCards }
+//                val displayCards = cards.ifEmpty { placeholderCards }
                 _uiState.value = HistoryUiState(
                     loading = false,
                     error = null,
-                    cards = displayCards
+                    cards = cards
                 )
             }.onFailure { error ->
                 _uiState.value = HistoryUiState(
