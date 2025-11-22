@@ -20,7 +20,6 @@ class TeamRepository(
         val teamsRef = db.collection("games")
             .document(gameId)
             .collection("teams")
-            .whereEqualTo("active", true)
 
         val snapshot = teamsRef.get().await()
 

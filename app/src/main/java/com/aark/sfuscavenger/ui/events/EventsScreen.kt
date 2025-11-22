@@ -143,7 +143,7 @@ private fun JoinTab(navController: NavController,
                         GameRow(
                             game = game,
                             onJoinClick = {
-                                navController.navigate("lobby")
+                                navController.navigate("lobby/${game.id}")
                             }
                         )
                     }
