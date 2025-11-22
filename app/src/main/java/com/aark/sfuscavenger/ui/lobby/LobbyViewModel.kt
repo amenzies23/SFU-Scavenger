@@ -216,7 +216,12 @@ class LobbyViewModel(
 
         viewModelScope.launch {
             try {
-                gamesCollection.document(gameId).update("status", "live").await()
+                gamesCollection.document(gameId).update(
+                    mapOf(
+                        "status" to "started",
+                        "startTime" to Timestamp.now()
+                    )
+                ).await()
             } catch (e: Exception) {
                 _state.update { it.copy(error = e.message) }
             }

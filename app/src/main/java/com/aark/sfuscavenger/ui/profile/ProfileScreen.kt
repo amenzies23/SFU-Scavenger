@@ -60,11 +60,12 @@ import com.aark.sfuscavenger.ui.theme.White
 @Composable
 fun ProfileScreen(
     navController: NavController,
+    showSettings: Boolean,
+    onRequestCloseSettings: () -> Unit,
     viewModel: ProfileViewModel = viewModel(),
     authViewModel: AuthViewModel = viewModel()
 ) {
     val profileState by viewModel.state.collectAsState()
-    var showSettings by rememberSaveable { mutableStateOf(false) }
 
     Column(
         modifier = Modifier
@@ -80,30 +81,7 @@ fun ProfileScreen(
                 )
             )
     ) {
-        // Profile top bar
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(Color.Transparent)
-                .padding(horizontal = 16.dp)
-                .padding(vertical = 16.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                text = "Profile",
-                fontSize = 32.sp,
-                fontWeight = FontWeight.Bold,
-                color = Color.Black,
-                modifier = Modifier.weight(1f) // bold
-            )
-            IconButton(onClick = { showSettings = true }) {
-                Icon(
-                    imageVector = Icons.Filled.Settings,
-                    contentDescription = "Profile Settings",
-                    tint = Color.Black
-                )
-            }
-        }
+        Spacer(modifier = Modifier.height(16.dp))
         
         ProfileInformation(profileState)
         FriendsList(
@@ -116,13 +94,13 @@ fun ProfileScreen(
         if (showSettings) {
             ProfileSettingsDialog(
                 currentState = profileState,
-                onDismiss = { showSettings = false },
+                onDismiss = onRequestCloseSettings,
                 onSave = { displayName, username, imageUri, removePhoto ->
                     viewModel.saveProfile(displayName, username, imageUri, removePhoto)
                 },
                 onLogout = {
                     authViewModel.signOut()
-                    showSettings = false
+                    onRequestCloseSettings()
                 }
             )
         }

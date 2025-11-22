@@ -137,17 +137,6 @@ fun MapScreen(
             .padding(16.dp) ,
         verticalArrangement = Arrangement.SpaceEvenly
     ) {
-        Spacer(modifier = Modifier.weight(1f))
-
-        // Header with game name
-        Text(
-            text = if (uiState.gameName.isNotBlank()) uiState.gameName else "Game map",
-            fontSize = 28.sp,
-            fontWeight = FontWeight.Bold,
-            color = Color(0xFF7B1F1F),
-            modifier = Modifier.padding(bottom = 24.dp)
-        )
-
         Spacer(modifier = Modifier.height(12.dp))
 
         Box(
