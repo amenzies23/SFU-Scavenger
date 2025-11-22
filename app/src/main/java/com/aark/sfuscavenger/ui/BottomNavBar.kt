@@ -28,7 +28,7 @@ fun BottomNavBar(navController: NavHostController) {
         BottomNavItem("Events", "events", Icons.Filled.Add),
         // Replace lock icon later
         BottomNavItem("History", "history", Icons.Filled.Lock),
-        BottomNavItem("Social", "social", Icons.Filled.Person)
+        BottomNavItem("Profile", "profile", Icons.Filled.Person)
     )
 
     NavigationBar(containerColor = Color(0xFFA6192E)) {

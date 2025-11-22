@@ -1,4 +1,4 @@
-package com.aark.sfuscavenger.ui.social
+package com.aark.sfuscavenger.ui.profile
 
 import android.net.Uri
 import android.util.Log

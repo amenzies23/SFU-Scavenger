@@ -4,7 +4,6 @@ import android.net.Uri
 import com.aark.sfuscavenger.data.models.Friend
 import com.aark.sfuscavenger.data.models.User
 import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.SetOptions
 import com.google.firebase.storage.FirebaseStorage
@@ -31,22 +30,28 @@ class UserRepository(
     suspend fun fetchFriends(limit: Long = 8): List<Friend> {
         if (limit <= 0) return emptyList()
 
-        val documents = users
-            .limit(limit + 1) // fetch one extra so we can drop the current user
+        val myId = currentUid()
+        val allUsers = users
+            .limit(limit + 1) // +1 so we can skip ourselves
             .get()
             .await()
             .documents
 
-        val myId = currentUid()
-        val friends = mutableListOf<Friend>()
-
-        for (doc in documents) {
-            if (doc.id == myId) continue
-            friends += doc.toFriend()
-            if (friends.size >= limit) break
-        }
-
-        return friends
+        return allUsers
+            .filter { it.id != myId }
+            .take(limit.toInt())
+            .map { doc ->
+                Friend(
+                    id = doc.id,
+                    displayName = doc.getString("displayName")
+                        .orEmpty()
+                        .ifBlank { doc.getString("email").orEmpty() },
+                    username = doc.getString("username"),
+                    photoUrl = doc.getString("photoUrl"),
+                    level = (doc.getLong("level") ?: 1L).toInt(),
+                    xp = (doc.getLong("xp") ?: 0L).toInt()
+                )
+            }
     }
 
     suspend fun updateDisplayName(name: String) =
@@ -69,19 +74,6 @@ class UserRepository(
         users.document(currentUid())
             .set(fields, SetOptions.merge())
             .await()
-    }
-
-    private fun DocumentSnapshot.toFriend(): Friend {
-        val fallbackName = getString("email") ?: "Explorer"
-        val displayName = getString("displayName").orEmpty().ifBlank { fallbackName }
-        return Friend(
-            id = id,
-            displayName = displayName,
-            username = getString("username"),
-            photoUrl = getString("photoUrl"),
-            level = (getLong("level") ?: 1L).toInt(),
-            xp = (getLong("xp") ?: 0L).toInt()
-        )
     }
 }
 

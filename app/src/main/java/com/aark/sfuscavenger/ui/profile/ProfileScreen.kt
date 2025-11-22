@@ -1,4 +1,4 @@
-package com.aark.sfuscavenger.ui.social
+package com.aark.sfuscavenger.ui.profile
 
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -58,7 +58,7 @@ import com.aark.sfuscavenger.ui.theme.Maroon
 import com.aark.sfuscavenger.ui.theme.White
 
 @Composable
-fun SocialScreen(
+fun ProfileScreen(
     navController: NavController,
     viewModel: ProfileViewModel = viewModel(),
     authViewModel: AuthViewModel = viewModel()
@@ -80,7 +80,7 @@ fun SocialScreen(
                 )
             )
     ) {
-        // Social top bar
+        // Profile top bar
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -90,7 +90,7 @@ fun SocialScreen(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                text = "Social",
+                text = "Profile",
                 fontSize = 32.sp,
                 fontWeight = FontWeight.Bold,
                 color = Color.Black,
