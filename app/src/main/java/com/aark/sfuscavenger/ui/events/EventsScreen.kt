@@ -49,7 +49,7 @@ import com.aark.sfuscavenger.ui.components.TopBar
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun EventsScreen(navController: NavController) {
+fun EventsScreen(navController: NavController, vm: EventsViewModel = viewModel()) {
     val selectedTab = remember { mutableIntStateOf(0) }
     val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior(
         state = rememberTopAppBarState()
@@ -66,7 +66,8 @@ fun EventsScreen(navController: NavController) {
             onTabSelected = { selectedTab.intValue = it },
             scrollBehavior = scrollBehavior,
             navController = navController,
-            modifier = Modifier.padding(paddingValues)
+            modifier = Modifier.padding(paddingValues),
+            vm = vm
         )
     }
 }
@@ -101,7 +102,8 @@ private fun EventsContent(
     onTabSelected: (Int) -> Unit,
     scrollBehavior: TopAppBarScrollBehavior,
     navController: NavController,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    vm: EventsViewModel
 
 ) {
     Column(
@@ -132,7 +134,7 @@ private fun EventsContent(
         }
 
         when (selectedTabIndex) {
-            0 -> JoinTab(navController = navController, modifier = Modifier.fillMaxSize().padding(16.dp))
+            0 -> JoinTab(navController = navController, vm, modifier = Modifier.fillMaxSize().padding(16.dp))
             1 -> CreateTab(navController = navController, modifier = Modifier.fillMaxSize().padding(16.dp))
         }
     }
@@ -143,11 +145,11 @@ private fun EventsContent(
 
 @Composable
 private fun JoinTab(navController: NavController,
-                    modifier: Modifier = Modifier,
-                    vm: EventsViewModel = viewModel()
+                    vm: EventsViewModel,
+                    modifier: Modifier = Modifier
 ) {
     val games = vm.games.collectAsState()
-    val loading = vm.loading.collectAsState()
+//    val loading = vm.loading.collectAsState()
     val error = vm.error.collectAsState()
 
     LaunchedEffect(Unit) {
@@ -159,29 +161,39 @@ private fun JoinTab(navController: NavController,
             .fillMaxSize()
 //            .padding(16.dp)
     ){
-        when {
-            loading.value -> {
-//                Text("Loading: ")
-                Text("")
-            }
-
-            error.value != null -> {
-                Text("Error: ${error.value}")
-            }
-
-            else -> {
-                LazyColumn {
-                    items(games.value) { game ->
-                        GameRow(
-                            game = game,
-                            onJoinClick = {
-                                navController.navigate("lobby/${game.id}")
-                            }
-                        )
+        LazyColumn {
+            items(games.value) { game ->
+                GameRow(
+                    game = game,
+                    onJoinClick = {
+                        navController.navigate("lobby/${game.id}")
                     }
-                }
+                )
             }
         }
+//        when {
+//            loading.value -> {
+////                Text("Loading: ")
+//                Text("")
+//            }
+//
+//            error.value != null -> {
+//                Text("Error: ${error.value}")
+//            }
+//
+//            else -> {
+//                LazyColumn {
+//                    items(games.value) { game ->
+//                        GameRow(
+//                            game = game,
+//                            onJoinClick = {
+//                                navController.navigate("lobby/${game.id}")
+//                            }
+//                        )
+//                    }
+//                }
+//            }
+//        }
     }
 
 }

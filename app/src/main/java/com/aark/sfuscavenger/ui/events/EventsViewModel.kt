@@ -8,6 +8,7 @@ import com.aark.sfuscavenger.data.models.Game
 import com.aark.sfuscavenger.repositories.GameRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.launch
 
 class EventsViewModel(
@@ -22,6 +23,18 @@ class EventsViewModel(
 
     private val _error = MutableStateFlow<String?>(null)
     val error: StateFlow<String?> = _error
+
+    init {
+        observeGames()
+    }
+
+    private fun observeGames() {
+        viewModelScope.launch {
+            gameRepo.observeGames()
+                .catch { e -> _error.value = e.message }
+                .collect { list -> _games.value = list }
+        }
+    }
 
     fun loadGames() {
         viewModelScope.launch {
