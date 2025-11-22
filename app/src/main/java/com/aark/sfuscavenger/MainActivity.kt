@@ -19,7 +19,7 @@ import androidx.navigation.compose.rememberNavController
 import com.aark.sfuscavenger.ui.BottomNavBar
 import com.aark.sfuscavenger.ui.events.EventsScreen
 import com.aark.sfuscavenger.ui.lobby.LobbyScreen
-import com.aark.sfuscavenger.ui.social.SocialScreen
+import com.aark.sfuscavenger.ui.profile.ProfileScreen
 import com.aark.sfuscavenger.ui.home.HomeScreen
 import com.aark.sfuscavenger.ui.login.SignInScreen
 import com.aark.sfuscavenger.ui.login.SignUpScreen
@@ -94,7 +94,7 @@ fun SFUScavengerApp() {
                     composable("home") { HomeScreen(navController) }
                     composable("events") { EventsScreen(navController) }
                     composable("history") { HistoryScreen(navController) }
-                    composable("social") { SocialScreen(navController) }
+                    composable("profile") { ProfileScreen(navController) }
                     composable(
                         route = "lobby/{gameId}"
                     ) { backStackEntry ->
@@ -113,5 +113,5 @@ fun SFUScavengerApp() {
 fun showBottomNavBar(navController: NavHostController): Boolean {
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
-    return currentRoute in listOf("home", "events", "history", "social")
+    return currentRoute in listOf("home", "events", "history", "profile")
 }

@@ -34,14 +34,13 @@ fun BottomNavBar(navController: NavHostController) {
         BottomNavItem("Events", "events") { selected ->
             Icon(imageVector = Icons.Filled.DateRange, contentDescription = "Events", tint = if(selected) Color.Unspecified else White)
         },
-        // Replace lock icon later
         BottomNavItem("History", "history") { selected ->
             Icon(
                 painter = painterResource(R.drawable.sc_history_48dp), contentDescription = "History", tint = if(selected) Color.Unspecified else White
             )
         },
-        BottomNavItem("Social", "social") { selected ->
-            Icon(imageVector = Icons.Filled.Person, contentDescription = "Social", tint = if(selected) Color.Unspecified else White)
+        BottomNavItem("Profile", "profile") { selected ->
+            Icon(imageVector = Icons.Filled.Person, contentDescription = "Profile", tint = if(selected) Color.Unspecified else White)
         }
     )
 
