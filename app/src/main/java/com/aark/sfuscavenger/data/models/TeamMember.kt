@@ -10,5 +10,6 @@ import com.google.firebase.Timestamp
 data class TeamMember(
     val userId: String = "",
     val role: String = "player", // Maybe we want roles, not sure yet
-    val joinedAt: Timestamp? = null
+    val joinedAt: Timestamp? = null,
+    val lastReadChatAt: Timestamp? = null
 )
