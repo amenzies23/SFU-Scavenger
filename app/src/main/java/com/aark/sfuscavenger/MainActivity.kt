@@ -90,7 +90,13 @@ fun SFUScavengerApp() {
                     composable("create") { CreateScreen(navController) }
                     composable("join") { JoinScreen(navController) }
                     composable("social") { SocialScreen(navController) }
-                    composable("lobby") { LobbyScreen(navController) }
+                    composable(
+                        route = "lobby/{gameId}"
+                    ) { backStackEntry ->
+                        val gameId = backStackEntry.arguments?.getString("gameId") ?: ""
+                        LobbyScreen(navController, gameId)
+                    }
+
                 }
             }
         }
