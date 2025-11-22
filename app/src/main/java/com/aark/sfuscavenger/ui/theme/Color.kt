@@ -15,6 +15,7 @@ val White = Color(0xFFFFFAF4)
 val Maroon = Color(0xFFA6192E)
 
 val Beige = Color(0xFFD3C5BB)
+val LightBeige = Color(0xFFf3ece7)
 
 val Black = Color(0xFF130303)
 

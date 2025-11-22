@@ -1,8 +1,10 @@
 package com.aark.sfuscavenger.ui.events
 
 import android.util.Log
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
@@ -32,12 +34,18 @@ import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
 import com.aark.sfuscavenger.data.models.Game
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.text.font.FontWeight
 import com.aark.sfuscavenger.ui.lobby.LobbyScreen
 import com.aark.sfuscavenger.ui.theme.Beige
 import com.aark.sfuscavenger.ui.theme.Black
+import com.aark.sfuscavenger.ui.theme.LightBeige
 import com.aark.sfuscavenger.ui.theme.Maroon
 import com.aark.sfuscavenger.ui.theme.SFUScavengerTheme
 import com.aark.sfuscavenger.ui.theme.White
+import com.aark.sfuscavenger.ui.components.TopBar
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -49,65 +57,87 @@ fun EventsScreen(navController: NavController) {
 
     Scaffold(
         topBar = {
-            TopBar(
-                selectedTab = selectedTab.intValue,
-                onTabSelected = { selectedTab.intValue = it},
-                scrollBehavior = scrollBehavior
-            )
-        }
+            TopBar(title = "Events")
+        },
+        containerColor = Beige
     ) { paddingValues ->
-        when (selectedTab.intValue) {
-            0 -> JoinTab(navController, modifier = Modifier.padding(paddingValues))
-            1 -> CreateTab(navController = navController, modifier = Modifier.padding(paddingValues))
-        }
+        EventsContent(
+            selectedTabIndex = selectedTab.intValue,
+            onTabSelected = { selectedTab.intValue = it },
+            scrollBehavior = scrollBehavior,
+            navController = navController,
+            modifier = Modifier.padding(paddingValues)
+        )
     }
 }
 
+//@OptIn(ExperimentalMaterial3Api::class)
+//@Composable
+//private fun TopBar(
+//    modifier: Modifier = Modifier,
+//
+//) {
+//    Column {
+//        TopAppBar(
+//            modifier = modifier,
+//            colors = TopAppBarDefaults.topAppBarColors(
+//                containerColor = Maroon
+//            ),
+//            title = {
+//                Text(
+//                    text = "Events",
+//                    color = White
+//                )
+//            }
+//        )
+//    }
+//
+//}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun TopBar(
-    selectedTab: Int,
+private fun EventsContent(
+    selectedTabIndex: Int,
     onTabSelected: (Int) -> Unit,
-    modifier: Modifier = Modifier,
     scrollBehavior: TopAppBarScrollBehavior,
-) {
-    Column {
-        TopAppBar(
-            modifier = modifier,
-            scrollBehavior = scrollBehavior,
-            colors = TopAppBarDefaults.topAppBarColors(
-                containerColor = Maroon
-            ),
-            title = {
-                Text(
-                    text = "Events",
-                    color = White
-                )
-            }
-        )
+    navController: NavController,
+    modifier: Modifier = Modifier
 
+) {
+    Column(
+        modifier = modifier
+            .nestedScroll(scrollBehavior.nestedScrollConnection)
+            .fillMaxSize()
+    ){
         TabRow(
-            selectedTabIndex = selectedTab,
-            containerColor = Beige,
+            selectedTabIndex = selectedTabIndex,
+            containerColor = LightBeige,
             indicator = { tabPositions ->
                 TabRowDefaults.Indicator(
-                    Modifier.tabIndicatorOffset(tabPositions[selectedTab]),
+                    Modifier.tabIndicatorOffset(tabPositions[selectedTabIndex]),
                     color = Maroon
                 )
             }
         ) {
             Tab(
-                selected = selectedTab == 0,
+                selected = selectedTabIndex == 0,
                 onClick = { onTabSelected(0) },
                 text = { Text("Join", color = Black)}
             )
             Tab(
-                selected = selectedTab == 1,
+                selected = selectedTabIndex == 1,
                 onClick = { onTabSelected(1) },
                 text = { Text("Create", color = Black)}
             )
         }
+
+        when (selectedTabIndex) {
+            0 -> JoinTab(navController = navController, modifier = Modifier.fillMaxSize().padding(16.dp))
+            1 -> CreateTab(navController = navController, modifier = Modifier.fillMaxSize().padding(16.dp))
+        }
     }
+
+
 
 }
 
@@ -126,11 +156,13 @@ private fun JoinTab(navController: NavController,
 
     Column(
         modifier = modifier
-            .padding(16.dp)
+            .fillMaxSize()
+//            .padding(16.dp)
     ){
         when {
             loading.value -> {
-                Text("Loading: ")
+//                Text("Loading: ")
+                Text("")
             }
 
             error.value != null -> {
@@ -169,15 +201,33 @@ fun GameRow(
     Row(
         modifier = Modifier
             .padding(vertical = 8.dp)
-            .fillMaxWidth(),
+            .fillMaxWidth()
+            .background(
+                color = LightBeige,
+                shape = RoundedCornerShape(16.dp)
+            ),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Text(
             text = game.name,
-            color = Black
+            color = Black,
+            modifier = Modifier
+                .weight(1f)
+                .padding(start = 4.dp),
+            fontWeight = FontWeight.Bold
         )
 
-        Button(onClick = onJoinClick) {
+        Button(
+            onClick = onJoinClick,
+            shape = RoundedCornerShape(16.dp),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = Maroon,
+                contentColor = White
+            ),
+            modifier = Modifier
+                .padding(end = 4.dp)
+
+        ) {
             Text("Join")
         }
     }
