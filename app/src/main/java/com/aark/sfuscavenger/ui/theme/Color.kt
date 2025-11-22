@@ -20,3 +20,4 @@ val LightBeige = Color(0xFFf3ece7)
 val Black = Color(0xFF130303)
 
 val Orange = Color(0xFFD68057)
+val DarkOrange = Color(0xFFA46A4B)

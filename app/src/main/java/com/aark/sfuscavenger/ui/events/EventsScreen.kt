@@ -3,9 +3,13 @@ package com.aark.sfuscavenger.ui.events
 import android.util.Log
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material3.Button
@@ -16,7 +20,6 @@ import androidx.compose.material3.TabRow
 import androidx.compose.material3.TabRowDefaults
 import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.TopAppBarScrollBehavior
 import androidx.compose.material3.rememberTopAppBarState
@@ -36,9 +39,15 @@ import com.aark.sfuscavenger.data.models.Game
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.TextField
+import androidx.compose.material3.TextFieldDefaults
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.text.font.FontWeight
-import com.aark.sfuscavenger.ui.lobby.LobbyScreen
+import androidx.compose.ui.unit.sp
 import com.aark.sfuscavenger.ui.theme.Beige
 import com.aark.sfuscavenger.ui.theme.Black
 import com.aark.sfuscavenger.ui.theme.LightBeige
@@ -46,6 +55,7 @@ import com.aark.sfuscavenger.ui.theme.Maroon
 import com.aark.sfuscavenger.ui.theme.SFUScavengerTheme
 import com.aark.sfuscavenger.ui.theme.White
 import com.aark.sfuscavenger.ui.components.TopBar
+import com.aark.sfuscavenger.ui.theme.DarkOrange
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -71,29 +81,6 @@ fun EventsScreen(navController: NavController, vm: EventsViewModel = viewModel()
         )
     }
 }
-
-//@OptIn(ExperimentalMaterial3Api::class)
-//@Composable
-//private fun TopBar(
-//    modifier: Modifier = Modifier,
-//
-//) {
-//    Column {
-//        TopAppBar(
-//            modifier = modifier,
-//            colors = TopAppBarDefaults.topAppBarColors(
-//                containerColor = Maroon
-//            ),
-//            title = {
-//                Text(
-//                    text = "Events",
-//                    color = White
-//                )
-//            }
-//        )
-//    }
-//
-//}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -150,6 +137,7 @@ private fun JoinTab(navController: NavController,
 ) {
 //    val games = vm.games.collectAsState()
     val publicGames = vm.publicGames.collectAsState()
+    val privateGames = vm.privateGames.collectAsState()
 //    val loading = vm.loading.collectAsState()
     val error = vm.error.collectAsState()
 
@@ -160,9 +148,22 @@ private fun JoinTab(navController: NavController,
     Column(
         modifier = modifier
             .fillMaxSize()
-//            .padding(16.dp)
     ){
-        LazyColumn {
+
+        Text(
+            text = "Public Games",
+            fontSize = 16.sp,
+            fontWeight = FontWeight.Medium,
+            color = DarkOrange
+        )
+
+        LazyColumn(
+            modifier = Modifier
+                .weight(1f)
+                .fillMaxWidth(),
+            contentPadding = PaddingValues(bottom = 8.dp)
+        ) {
+
             items(publicGames.value) { game ->
                 GameRow(
                     game = game,
@@ -172,29 +173,17 @@ private fun JoinTab(navController: NavController,
                 )
             }
         }
-//        when {
-//            loading.value -> {
-////                Text("Loading: ")
-//                Text("")
-//            }
-//
-//            error.value != null -> {
-//                Text("Error: ${error.value}")
-//            }
-//
-//            else -> {
-//                LazyColumn {
-//                    items(games.value) { game ->
-//                        GameRow(
-//                            game = game,
-//                            onJoinClick = {
-//                                navController.navigate("lobby/${game.id}")
-//                            }
-//                        )
-//                    }
-//                }
-//            }
-//        }
+
+        Spacer(modifier = Modifier.height(60.dp))
+
+        Text(
+            text = "Join By Code",
+            fontSize = 16.sp,
+            fontWeight = FontWeight.Medium,
+            color = DarkOrange
+        )
+
+        JoinByCodeRow(navController = navController, privateGames = privateGames.value, onInvalidCode = {})
     }
 
 }
@@ -215,6 +204,7 @@ fun GameRow(
         modifier = Modifier
             .padding(vertical = 8.dp)
             .fillMaxWidth()
+            .heightIn(min = 56.dp)
             .background(
                 color = LightBeige,
                 shape = RoundedCornerShape(16.dp)
@@ -226,7 +216,7 @@ fun GameRow(
             color = Black,
             modifier = Modifier
                 .weight(1f)
-                .padding(start = 4.dp),
+                .padding(start = 16.dp),
             fontWeight = FontWeight.Bold
         )
 
@@ -238,13 +228,78 @@ fun GameRow(
                 contentColor = White
             ),
             modifier = Modifier
-                .padding(end = 4.dp)
+                .padding(end = 8.dp)
 
         ) {
             Text("Join")
         }
     }
 }
+
+@Composable
+fun JoinByCodeRow(
+    navController: NavController,
+    privateGames: List<Game>,
+    onInvalidCode: () -> Unit
+) {
+    var code by remember { mutableStateOf("") }
+//    val privateGames by vm.privateGames.collectAsState()
+
+    Row(
+        modifier = Modifier
+            .padding(vertical = 8.dp)
+            .fillMaxWidth()
+            .background(
+                color = LightBeige,
+                shape = RoundedCornerShape(16.dp)
+            ),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+
+        TextField(
+            value = code,
+            onValueChange = { code = it },
+            placeholder = { Text("Enter Join code") },
+            shape = RoundedCornerShape(16.dp),
+            colors = TextFieldDefaults.colors(
+                focusedIndicatorColor = Color.Transparent,
+                unfocusedIndicatorColor = Color.Transparent,
+                focusedContainerColor = LightBeige,
+                unfocusedContainerColor = LightBeige,
+            ),
+            modifier = Modifier
+                .weight(1f)
+                .background(
+                    color = LightBeige,
+                    shape = RoundedCornerShape(16.dp)
+                ),
+            singleLine = true,
+
+
+        )
+
+        Button(
+            onClick = {
+                val match = privateGames.firstOrNull { it.joinCode == code.trim() }
+                if (match != null && match.status == "live") {
+                    navController.navigate("lobby/${match.id}")
+                } else {
+                    // Handle invalid code (e.g., show a message to the user)
+                }
+            },
+            shape = RoundedCornerShape(16.dp),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = Maroon,
+                contentColor = White
+            ),
+            modifier = Modifier
+                .padding(end = 8.dp)
+        ) {
+            Text("Join")
+        }
+    }
+}
+
 
 @Preview(showBackground = true)
 @Composable
