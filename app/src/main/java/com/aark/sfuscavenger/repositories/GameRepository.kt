@@ -1,12 +1,15 @@
 package com.aark.sfuscavenger.repositories
 
+import androidx.compose.runtime.snapshotFlow
 import com.aark.sfuscavenger.data.models.Game
 import com.google.firebase.Timestamp
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.GeoPoint
+import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.tasks.await
 import kotlin.random.Random
+import kotlinx.coroutines.channels.awaitClose
 
 /**
  * Sample GameRepository to get an idea of how to interact with Firebase Firestore
@@ -91,9 +94,26 @@ class GameRepository(
         }
         return games
     }
-    
+
     suspend fun getGameName(gameId: String): String? {
         val snap = db.collection("games").document(gameId).get().await()
         return snap.getString("name")
     }
+
+    fun observeGames() = callbackFlow<List<Game>> {
+        val listener = gamesCollection.addSnapshotListener { snapshot, error ->
+            if (error != null) {
+                close(error)
+                return@addSnapshotListener
+            }
+            val list = snapshot?.documents?.mapNotNull { doc ->
+                doc.toObject(Game::class.java)?.copy(id = doc.id)
+            } ?: emptyList()
+            trySend(list)
+        }
+        awaitClose {
+            listener.remove()
+        }
+    }
+
 }
