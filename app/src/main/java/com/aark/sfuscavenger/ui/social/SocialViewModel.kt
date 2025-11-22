@@ -1,10 +1,16 @@
 package com.aark.sfuscavenger.ui.social
 
+import android.net.Uri
+import android.util.Log
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import com.aark.sfuscavenger.data.models.Friend
+import com.aark.sfuscavenger.repositories.UserRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
 
 /**
  * Profile Picture
@@ -15,15 +21,8 @@ import kotlinx.coroutines.flow.update
  * Friends List
  */
 
-// Friends Info
-data class Friend (
-    val name: String,
-    val profilePicture: String? = null,
-    val totalXP: Int = 0
-)
-
 // Profile State
-data class ProfileState (
+data class ProfileState(
     val profilePicture: String? = null,
     val displayName: String = "",
     val username: String = "",
@@ -32,35 +31,72 @@ data class ProfileState (
     val friends: List<Friend> = emptyList()
 )
 
-class ProfileViewModel : ViewModel() {
+class ProfileViewModel(
+    private val repository: UserRepository = UserRepository()
+) : ViewModel() {
 
     private val _state = MutableStateFlow(ProfileState())
     val state: StateFlow<ProfileState> = _state.asStateFlow()
 
-    // Set display name text
-    fun setDisplayName(name: String) {
-        _state.update { it.copy(displayName = name )}
+    init {
+        refreshProfile()
     }
 
-    // Set username text
-    fun setUsername(username: String) {
-        _state.update { it.copy(username = username)}
+    fun refreshProfile() = launchScoped {
+        val user = repository.fetchUser()
+        val friends = repository.fetchFriends()
+        _state.update {
+            it.copy(
+                profilePicture = user?.photoUrl,
+                displayName = user?.displayName.orEmpty(),
+                username = user?.username.orEmpty(),
+                userLevel = user?.level ?: 1,
+                totalXP = user?.xp ?: 0,
+                friends = friends
+            )
+        }
     }
 
-    // Show profile picture
-    fun setAvatar(url: String?) {
-        _state.update { it.copy(profilePicture = url)}
+    // TODO: Implement AppCheck for uploads
+    // right now we cannot save profile pictures because firebase must validate the photos that are being saved
+    fun saveProfile(displayName: String, username: String, newImage: Uri?, removePhoto: Boolean) =
+        launchScoped {
+            repository.updateDisplayName(displayName)
+            repository.updateUsername(username)
+            val photoUrl = resolvePhotoUrl(newImage, removePhoto)
+            _state.update {
+                it.copy(
+                    displayName = displayName,
+                    username = username,
+                    profilePicture = photoUrl
+                )
+            }
+        }
+
+    private suspend fun resolvePhotoUrl(newImage: Uri?, removePhoto: Boolean): String? {
+        val current = _state.value.profilePicture
+        return when {
+            removePhoto -> {
+                repository.updatePhotoUrl(null)
+                null
+            }
+            newImage != null -> {
+                val uploadedUrl = repository.uploadProfileImage(newImage)
+                repository.updatePhotoUrl(uploadedUrl)
+                uploadedUrl
+            }
+            else -> current
+        }
     }
 
-    // Show level
-    fun setLevel(level: Int) {
-        _state.update { it.copy(userLevel = level)}
+    private fun launchScoped(block: suspend () -> Unit) {
+        viewModelScope.launch {
+            runCatching { block() }
+                .onFailure { Log.e(TAG, "Profile error", it) }
+        }
     }
 
-    // Add XP
-    fun addXP(levelXP: Int) {
-        _state.update { it.copy(totalXP = levelXP)}
+    companion object {
+        private const val TAG = "ProfileViewModel"
     }
-
-    // Add friend
 }

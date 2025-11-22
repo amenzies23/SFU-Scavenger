@@ -8,7 +8,9 @@ import com.google.firebase.Timestamp
 data class User(
     val email: String = "",
     val displayName: String? = null,
+    val username: String? = null,
     val level: Int = 1,
     val xp: Int = 0,
-    val createdAt: Timestamp? = null
+    val createdAt: Timestamp? = null,
+    val photoUrl: String? = null
 )
