@@ -146,4 +146,34 @@ class GameRepository(
             doc.toObject(Game::class.java)?.copy(id = doc.id)
         }
     }
+
+    /**
+     * Returns all games with status == "ended" and the user has the membership of the game as well
+     */
+    suspend fun getEndedGamesForCurrentUser(): List<Game> {
+        val uid = auth.currentUser?.uid ?: return emptyList()
+
+        val membershipsSnap = db.collection("users")
+            .document(uid)
+            .collection("memberships")
+            .get()
+            .await()
+
+        if (membershipsSnap.isEmpty) return emptyList()
+
+        val gameIds = membershipsSnap.documents.map { it.id }
+
+        val snapshot = gamesCollection
+            .whereIn(FieldPath.documentId(), gameIds)
+            .whereEqualTo("status", "ended")
+            .get()
+            .await()
+
+        if (snapshot.isEmpty) return emptyList()
+
+        return snapshot.documents.mapNotNull { doc ->
+            doc.toObject(Game::class.java)?.copy(id = doc.id)
+        }
+    }
+
 }

@@ -77,7 +77,11 @@ class UserRepository(
             .collection("memberships")
             .get()
             .await()
-        return snapshot.documents.mapNotNull { it.toObject(GameMember::class.java) }
+        return snapshot.documents.mapNotNull { doc ->
+            val membership = doc.toObject(GameMember::class.java)
+            // Use document ID as gameId if the field is empty (for empty membership documents)
+            membership?.copy(gameId = membership.gameId.ifBlank { doc.id })
+        }
     }
 
     private suspend fun updateUserFields(fields: Map<String, Any?>) {

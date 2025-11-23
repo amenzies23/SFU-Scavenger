@@ -57,14 +57,6 @@ fun SFUScavengerApp() {
     val state by vm.state.collectAsStateWithLifecycle()
     var showProfileSettings by rememberSaveable { mutableStateOf(false) }
 
-    LaunchedEffect(state.isLoggedIn) {
-        if (state.isLoggedIn) {
-            navController.navigate("home") { popUpTo("login") { inclusive = true } }
-        } else {
-            navController.navigate("login") { popUpTo(0) }
-        }
-    }
-
     // Tracking the current route to display in the TopBar component
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
@@ -148,11 +140,25 @@ fun SFUScavengerApp() {
         }
     }
 
-    LaunchedEffect(state.isLoggedIn) {
-        if (state.isLoggedIn) {
-            navController.navigate("home") { popUpTo("login") { inclusive = true } }
-        } else {
-            navController.navigate("login") { popUpTo(0) }
+    // Navigation depending on login state, also  need to check if Nav graph is ready
+    LaunchedEffect(state.isLoggedIn, currentRoute) {
+        if (currentRoute != null) {
+            val isAuthenticatedRoute = currentRoute == "home" || 
+                currentRoute == "events" || 
+                currentRoute == "history" || 
+                currentRoute == "profile" || 
+                currentRoute.startsWith("lobby/") || 
+                currentRoute.startsWith("results/")
+            
+            if (state.isLoggedIn && !isAuthenticatedRoute) {
+                navController.navigate("home") { 
+                    popUpTo("login") { inclusive = true } 
+                }
+            } else if (!state.isLoggedIn && currentRoute != "login" && currentRoute != "signup") {
+                navController.navigate("login") { 
+                    popUpTo(0) 
+                }
+            }
         }
     }
 }

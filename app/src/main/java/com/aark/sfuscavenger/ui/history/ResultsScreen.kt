@@ -24,7 +24,14 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import com.aark.sfuscavenger.repositories.GameRepository
+import com.aark.sfuscavenger.repositories.TeamRepository
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
@@ -40,6 +47,37 @@ fun ResultsScreen(
     gameId: String,
     teamId: String?
 ) {
+    val gameRepository = remember { GameRepository() }
+    val teamRepository = remember { TeamRepository() }
+    
+    var gameName by remember { mutableStateOf<String?>(null) }
+    var placement by remember { mutableStateOf<String?>(null) }
+    var score by remember { mutableStateOf<Int?>(null) }
+    
+    LaunchedEffect(gameId, teamId) {
+        val game = gameRepository.getGame(gameId)
+        gameName = game?.name?.ifBlank { "Untitled Game" }
+        
+        if (teamId != null && teamId != "none") {
+            val teamSummary = teamRepository.getTeamSummary(gameId, teamId)
+            val placementInt = teamSummary?.placement ?: 0
+            placement = if (placementInt > 0) {
+                when (placementInt) {
+                    1 -> "1st place"
+                    2 -> "2nd place"
+                    3 -> "3rd place"
+                    else -> "${placementInt}th place"
+                }
+            } else {
+                "N/A"
+            }
+            score = teamSummary?.score
+        } else {
+            placement = "N/A"
+            score = null
+        }
+    }
+    
     val background = Brush.verticalGradient(
         listOf(Color(0xFFF7F1EA), Color(0xFFF1E5DB))
     )
@@ -59,7 +97,7 @@ fun ResultsScreen(
         ) {
             item {
                 ResultsTopBar(
-                    title = "Game summary",
+                    title = gameName ?: "Game summary",
                     onBack = { navController.popBackStack() }
                 )
             }
@@ -75,8 +113,8 @@ fun ResultsScreen(
                         text = "Team: ${teamId?.takeIf { it != "none" } ?: "Not assigned"}",
                         color = Maroon
                     )
-                    Text(text = "Placement: 1st place")
-                    Text(text = "Score: 320 pts")
+                    Text(text = "Placement: ${placement ?: "N/A"}")
+                    Text(text = "Score: ${score?.let { "$it pts" } ?: "N/A"}")
                 }
             }
 

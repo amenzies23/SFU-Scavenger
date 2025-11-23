@@ -2,6 +2,8 @@ package com.aark.sfuscavenger.ui.history
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.aark.sfuscavenger.data.models.Game
+import com.aark.sfuscavenger.data.models.GameMember
 import com.aark.sfuscavenger.repositories.GameRepository
 import com.aark.sfuscavenger.repositories.TeamRepository
 import com.aark.sfuscavenger.repositories.UserRepository
@@ -51,38 +53,70 @@ class HistoryViewModel(
     fun refreshHistory() {
         viewModelScope.launch {
             _uiState.update { it.copy(loading = true, error = null) }
+            
             runCatching {
-                val memberships = userRepository.getMembershipsForUser()
-                memberships.mapNotNull { membership ->
-                    val game = gameRepository.getGame(membership.gameId) ?: return@mapNotNull null
-                    val placementLabel = membership.teamId?.let { teamId ->
-                        teamRepository.getTeamSummary(membership.gameId, teamId)
-                            ?.placement
-                            ?.toOrdinalString()
-                    } ?: "In progress"
-
-                    HistoryCard(
-                        gameId = game.id,
-                        teamId = membership.teamId,
-                        title = game.name.ifBlank { "Untitled Game" },
-                        placement = placementLabel,
-                        joinedAt = membership.joinedAt
-                    )
-                }.sortedByDescending { it.joinedAt }
-            }.onSuccess { cards ->
-//                val displayCards = cards.ifEmpty { placeholderCards }
+                val endedGames = gameRepository.getEndedGamesForCurrentUser()
+                val allMemberships = userRepository.getMembershipsForUser()
+                val membershipByGameId = allMemberships.associateBy { it.gameId }
+                
+                val historyCards = endedGames.mapNotNull { game ->
+                    createHistoryCard(game, membershipByGameId[game.id])
+                }
+                
+                historyCards.sortedByDescending { it.joinedAt }
+            }.onSuccess { sortedCards ->
                 _uiState.value = HistoryUiState(
                     loading = false,
                     error = null,
-                    cards = cards
+                    cards = sortedCards
                 )
-            }.onFailure { error ->
+            }.onFailure { exception ->
                 _uiState.value = HistoryUiState(
                     loading = false,
-                    error = error.message ?: "Unable to load game history",
+                    error = exception.message ?: "Unable to load game history",
                     cards = emptyList()
                 )
             }
+        }
+    }
+    
+    /**
+     * Creates a HistoryCard from a game and its membership info.
+     * Returns null if membership is missing.
+     * If teamId is not in membership, looks it up from the game's teams.
+     */
+    private suspend fun createHistoryCard(
+        game: Game,
+        membership: GameMember?
+    ): HistoryCard? {
+        if (membership == null) return null
+        
+        val teamId = membership.teamId ?: teamRepository.getUserTeamId(game.id)
+        val placementLabel = getPlacement(game.id, teamId)
+        
+        return HistoryCard(
+            gameId = game.id,
+            teamId = teamId,
+            title = game.name.ifBlank { "Untitled Game" },
+            placement = placementLabel,
+            joinedAt = membership.joinedAt
+        )
+    }
+    
+    /**
+     * Gets the placement string for a team in a game.
+     * Returns "N/A" if placement data is not available.
+     */
+    private suspend fun getPlacement(gameId: String, teamId: String?): String {
+        if (teamId == null) return "N/A"
+        
+        val teamSummary = teamRepository.getTeamSummary(gameId, teamId)
+        val placement = teamSummary?.placement ?: 0
+        
+        return if (placement > 0) {
+            placement.toOrdinalString()
+        } else {
+            "N/A"
         }
     }
 }
