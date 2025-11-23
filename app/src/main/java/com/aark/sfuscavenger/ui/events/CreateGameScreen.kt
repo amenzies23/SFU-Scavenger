@@ -4,6 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
@@ -12,6 +13,9 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Slider
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
 import androidx.compose.material3.TabRowDefaults
@@ -24,8 +28,13 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.font.FontWeight.Companion.Bold
+import androidx.compose.ui.text.style.TextDecoration.Companion.Underline
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -130,10 +139,10 @@ private fun GameTab(navController: NavController,
                 TextField(
                     value = game.value.name,
                     onValueChange = { vm.updateName(it) },
-                    label = { Text("Game Name") },
+                    label = { Text("Game Name", color = Maroon, fontWeight = Bold) },
                     placeholder = { Text("Enter game name") },
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(16.dp),
+                    shape = RoundedCornerShape(8.dp),
                     colors = TextFieldDefaults.colors(
                         focusedIndicatorColor = Color.Transparent,
                         unfocusedIndicatorColor = Color.Transparent,
@@ -149,12 +158,12 @@ private fun GameTab(navController: NavController,
                 TextField(
                     value = game.value.description,
                     onValueChange = { vm.updateDescription(it) },
-                    label = { Text("Description") },
+                    label = { Text("Description", color = Maroon, fontWeight = Bold) },
                     placeholder = { Text("Enter game description") },
                     modifier = Modifier
                         .fillMaxWidth()
                         .heightIn(min = 120.dp),
-                    shape = RoundedCornerShape(16.dp),
+                    shape = RoundedCornerShape(8.dp),
                     colors = TextFieldDefaults.colors(
                         focusedIndicatorColor = Color.Transparent,
                         unfocusedIndicatorColor = Color.Transparent,
@@ -163,6 +172,57 @@ private fun GameTab(navController: NavController,
                     ),
                     maxLines = 5
                 )
+            }
+
+//            item {
+//                // Game Name
+//                TextField(
+//                    value = game.value.name,
+//                    onValueChange = { vm.updateName(it) },
+//                    label = { Text("Game Name", color = Maroon, fontWeight = Bold) },
+//                    placeholder = { Text("Enter game name") },
+//                    modifier = Modifier.fillMaxWidth(),
+//                    shape = RoundedCornerShape(8.dp),
+//                    colors = TextFieldDefaults.colors(
+//                        focusedIndicatorColor = Color.Transparent,
+//                        unfocusedIndicatorColor = Color.Transparent,
+//                        focusedContainerColor = LightBeige,
+//                        unfocusedContainerColor = LightBeige,
+//                    ),
+//                    singleLine = true
+//                )
+//            }
+
+            item {
+                // Join Mode Toggle
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 8.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Private Game (Join by Code)",
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = Black
+                    )
+
+                    Switch(
+                        checked = game.value.joinMode == "code",
+                        onCheckedChange = { isChecked ->
+                            vm.updateJoinMode(if (isChecked) "code" else "open")
+                        },
+                        colors = SwitchDefaults.colors(
+                            checkedThumbColor = White,
+                            checkedTrackColor = Maroon,
+                            uncheckedThumbColor = Maroon,
+                            uncheckedTrackColor = LightBeige
+                        ),
+                        modifier = Modifier.scale(0.8f)
+                    )
+                }
             }
 
             if (error.value != null) {
@@ -200,6 +260,24 @@ private fun GameTab(navController: NavController,
             )
         }
 
+        Button(
+            onClick = { navController.popBackStack() },
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 8.dp),
+            shape = RoundedCornerShape(16.dp),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = LightBeige,
+                contentColor = Black
+            ),
+            enabled = !loading.value
+        ){
+            Text(
+                text = "Cancel",
+                modifier = Modifier.padding(vertical = 8.dp)
+            )
+        }
+
     }
 
 }
@@ -209,5 +287,5 @@ private fun TasksTab(navController: NavController,
                     vm: CreateGameViewModel,
                     modifier: Modifier = Modifier
 ) {
-    Text(text = "Game Tab Content")
+    Text(text = "Task Tab Content")
 }
