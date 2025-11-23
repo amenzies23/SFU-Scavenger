@@ -59,7 +59,7 @@ class EventsViewModel(
             emptyList()
         )
 
-    val draftGames: StateFlow<List<Game>> =
+    val myGames: StateFlow<List<Game>> =
         games.map { list ->
             list.filter { it.status == "draft" && it.ownerId == auth.currentUser?.uid }
         }.stateIn(

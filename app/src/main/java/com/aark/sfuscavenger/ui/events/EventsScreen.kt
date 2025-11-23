@@ -1,7 +1,14 @@
 package com.aark.sfuscavenger.ui.events
 
 import android.util.Log
+import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
+import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -65,18 +72,27 @@ fun EventsScreen(navController: NavController, vm: EventsViewModel = viewModel()
         state = rememberTopAppBarState()
     )
 
-    Scaffold(
-        containerColor = Beige
-    ) { paddingValues ->
-        EventsContent(
-            selectedTabIndex = selectedTab.intValue,
-            onTabSelected = { selectedTab.intValue = it },
-            scrollBehavior = scrollBehavior,
-            navController = navController,
-            modifier = Modifier.padding(paddingValues),
-            vm = vm
-        )
-    }
+    EventsContent(
+        selectedTabIndex = selectedTab.intValue,
+        onTabSelected = { selectedTab.intValue = it },
+        scrollBehavior = scrollBehavior,
+        navController = navController,
+        modifier = Modifier.background(Beige),
+        vm = vm
+    )
+
+//    Scaffold(
+//        containerColor = Beige
+//    ) { paddingValues ->
+//        EventsContent(
+//            selectedTabIndex = selectedTab.intValue,
+//            onTabSelected = { selectedTab.intValue = it },
+//            scrollBehavior = scrollBehavior,
+//            navController = navController,
+//            modifier = Modifier.padding(paddingValues),
+//            vm = vm
+//        )
+//    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -92,7 +108,7 @@ private fun EventsContent(
 ) {
     Column(
         modifier = modifier
-            .nestedScroll(scrollBehavior.nestedScrollConnection)
+//            .nestedScroll(scrollBehavior.nestedScrollConnection)
             .fillMaxSize()
     ){
         TabRow(
@@ -119,7 +135,7 @@ private fun EventsContent(
 
         when (selectedTabIndex) {
             0 -> JoinTab(navController = navController, vm, modifier = Modifier.fillMaxSize().padding(16.dp))
-            1 -> CreateTab(navController = navController, modifier = Modifier.fillMaxSize().padding(16.dp))
+            1 -> CreateTab(navController = navController, vm, modifier = Modifier.fillMaxSize().padding(16.dp))
         }
     }
 
@@ -138,9 +154,9 @@ private fun JoinTab(navController: NavController,
 //    val loading = vm.loading.collectAsState()
     val error = vm.error.collectAsState()
 
-    LaunchedEffect(Unit) {
-        vm.loadGames()
-    }
+//    LaunchedEffect(Unit) {
+//        vm.loadGames()
+//    }
 
     Column(
         modifier = modifier
@@ -171,7 +187,7 @@ private fun JoinTab(navController: NavController,
             }
         }
 
-        Spacer(modifier = Modifier.height(60.dp))
+        Spacer(modifier = Modifier.height(8.dp))
 
         Text(
             text = "Join By Code",
@@ -186,12 +202,167 @@ private fun JoinTab(navController: NavController,
 }
 
 @Composable
-private fun CreateTab(navController: NavController, modifier: Modifier = Modifier) {
-    Text("Create Tab", modifier = modifier.padding(16.dp))
+private fun CreateTab(navController: NavController,
+                      vm: EventsViewModel,
+                      modifier: Modifier = Modifier) {
+    val myGames = vm.myGames.collectAsState()
+
+    Column(
+        modifier = modifier
+            .fillMaxSize()
+    ) {
+        Text(
+            text = "My Games",
+            fontSize = 16.sp,
+            fontWeight = FontWeight.Medium,
+            color = DarkOrange
+        )
+
+        LazyColumn(
+            modifier = Modifier
+                .weight(1f)
+                .fillMaxWidth(),
+            contentPadding = PaddingValues(bottom = 8.dp)
+        ) {
+
+            items(myGames.value) { game ->
+                MyGamesRow(
+                    game = game,
+                    onLaunchClick = {
+                        Log.d("MyGamesRow", "Launch clicked for game: ${game.name}")
+                        navController.navigate("lobby/${game.id}")
+                    },
+                    onEditClick = {
+                        Log.d("MyGamesRow", "Edit clicked for game: ${game.name}")
+                    },
+                    onDeleteClick = {
+                        Log.d("MyGamesRow", "Delete clicked for game: ${game.name}")
+                    }
+                )
+            }
+
+        }
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+
+    }
 }
 
 @Composable
-fun GameRow(
+private fun MyGamesRow(
+    game: Game,
+    onEditClick: () -> Unit,
+    onLaunchClick: () -> Unit,
+    onDeleteClick: () -> Unit,
+) {
+    var isExpanded by remember { mutableStateOf(false) }
+
+    Column(
+        modifier = Modifier
+            .padding(vertical = 8.dp)
+            .fillMaxWidth()
+            .background(
+                color = LightBeige,
+                shape = RoundedCornerShape(16.dp)
+            )
+//            .clickable { isExpanded = !isExpanded }
+            .clickable(
+                indication = null,
+                interactionSource = remember { MutableInteractionSource() }
+            ) { isExpanded = !isExpanded }
+            .animateContentSize(
+                animationSpec = spring(
+                    dampingRatio = Spring.DampingRatioMediumBouncy,
+                    stiffness = Spring.StiffnessLow
+                )
+            )
+            .padding(16.dp)
+    ){
+        Row(
+            modifier = Modifier
+                .fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = game.name,
+                color = Black,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.weight(1f)
+            )
+        }
+
+        if (isExpanded) {
+            Spacer(modifier = Modifier.height(12.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Button(
+                    onClick = onLaunchClick,
+                    modifier = Modifier.weight(1f),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Maroon,
+                        contentColor = White
+                    )
+                ) {
+                    Text("Launch")
+                }
+
+                Button(
+                    onClick = onEditClick,
+                    modifier = Modifier.weight(1f),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Maroon,
+                        contentColor = White
+                    )
+                ) {
+                    Text("Edit")
+                }
+
+                Button(
+                    onClick = onDeleteClick,
+                    modifier = Modifier.weight(1f),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = DarkOrange,
+                        contentColor = White
+                    )
+                ) {
+                    Text("Delete")
+                }
+            }
+        }
+    }
+
+//    Row(
+//        modifier = Modifier
+//            .padding(vertical = 8.dp)
+//            .fillMaxWidth()
+//            .heightIn(min = 56.dp)
+//            .background(
+//                color = LightBeige,
+//                shape = RoundedCornerShape(16.dp)
+//            ),
+//        verticalAlignment = Alignment.CenterVertically
+//    ) {
+//        Text(
+//            text = game.name,
+//            color = Black,
+//            modifier = Modifier
+//                .weight(1f)
+//                .padding(start = 16.dp),
+//            fontWeight = FontWeight.Bold
+//        )
+//    }
+
+}
+
+@Composable
+private fun GameRow(
     game: Game,
     onJoinClick: () -> Unit,
 ){
