@@ -32,6 +32,7 @@ import androidx.core.view.WindowInsetsControllerCompat
 import com.aark.sfuscavenger.ui.login.AuthViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.aark.sfuscavenger.ui.components.TopBar
+import com.aark.sfuscavenger.ui.events.CreateGameScreen
 import com.aark.sfuscavenger.ui.history.HistoryScreen
 import com.aark.sfuscavenger.ui.history.ResultsScreen
 
@@ -67,6 +68,9 @@ fun SFUScavengerApp() {
         currentRoute == "history" -> "History"
         currentRoute == "profile" -> "Profile"
         currentRoute?.startsWith("lobby/") == true -> "Lobby"
+        currentRoute?.startsWith("createGame") == true -> {
+            if (currentRoute.contains("gameId=")) "Edit Game" else "Create Game"
+        }
         else -> null
     }
 
@@ -128,6 +132,11 @@ fun SFUScavengerApp() {
                         LobbyScreen(navController, gameId)
                     }
                     composable(
+                        route = "createGame?gameId={gameId}"
+                    ) { backStackEntry ->
+                        val gameId = backStackEntry.arguments?.getString("gameId")
+                        CreateGameScreen(navController, gameId = gameId) }
+                    composable(
                         route = "results/{gameId}/{teamId}"
                     ) { backStackEntry ->
                         val gameId = backStackEntry.arguments?.getString("gameId").orEmpty()
@@ -148,7 +157,8 @@ fun SFUScavengerApp() {
                 currentRoute == "history" || 
                 currentRoute == "profile" || 
                 currentRoute.startsWith("lobby/") || 
-                currentRoute.startsWith("results/")
+                currentRoute.startsWith("results/") ||
+                currentRoute.startsWith("createGame")
             
             if (state.isLoggedIn && !isAuthenticatedRoute) {
                 navController.navigate("home") { 

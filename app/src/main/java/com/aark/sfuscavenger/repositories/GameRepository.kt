@@ -147,6 +147,21 @@ class GameRepository(
         }
     }
 
+    suspend fun deleteGame(gameId: String) {
+        gamesCollection.document(gameId).delete().await()
+    }
+
+    suspend fun updateGame(game: Game) {
+        val updates = hashMapOf<String, Any>(
+            "name" to game.name,
+            "description" to game.description,
+            "joinMode" to game.joinMode,
+            "updatedAt" to Timestamp.now()
+        )
+
+        gamesCollection.document(game.id).update(updates).await()
+    }
+
     /**
      * Returns all games with status == "ended" and the user has the membership of the game as well
      */

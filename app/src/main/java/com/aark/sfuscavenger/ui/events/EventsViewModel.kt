@@ -44,6 +44,10 @@ class EventsViewModel(
     val publicGames: StateFlow<List<Game>> =
         games.map { list ->
             list.filter { it.status == "live" && it.joinMode == "open" }
+                .sortedWith(
+                    compareBy<Game> { it.name }
+                        .thenBy { it.id }
+                )
         }.stateIn(
             viewModelScope,
             SharingStarted.Eagerly,
@@ -59,9 +63,15 @@ class EventsViewModel(
             emptyList()
         )
 
-    val draftGames: StateFlow<List<Game>> =
+    val myGames: StateFlow<List<Game>> =
         games.map { list ->
-            list.filter { it.status == "draft" && it.ownerId == auth.currentUser?.uid }
+            list
+                .filter { it.status == "draft" && it.ownerId == auth.currentUser?.uid }
+                .sortedWith(
+                    compareByDescending<Game> { it.updatedAt?.seconds ?: 0L }
+                        .thenByDescending { it.createdAt?.seconds ?: 0L }
+                        .thenBy { it.id }
+                )
         }.stateIn(
             viewModelScope,
             SharingStarted.Eagerly,
@@ -79,6 +89,17 @@ class EventsViewModel(
                 _error.value = t.message?: "Failed"
             } finally {
                 _loading.value = false
+            }
+        }
+    }
+
+    fun deleteGame(gameId: String) {
+        viewModelScope.launch {
+            _error.value = null
+            try {
+                gameRepo.deleteGame(gameId)
+            } catch (t: Throwable) {
+                _error.value = t.message ?: "Failed to delete game"
             }
         }
     }
