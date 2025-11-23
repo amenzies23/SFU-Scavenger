@@ -2,6 +2,7 @@ package com.aark.sfuscavenger.repositories
 
 import android.net.Uri
 import com.aark.sfuscavenger.data.models.Friend
+import com.aark.sfuscavenger.data.models.GameMember
 import com.aark.sfuscavenger.data.models.User
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
@@ -22,22 +23,22 @@ class UserRepository(
     private fun currentUid(): String =
         auth.currentUser?.uid ?: error("User not logged in")
 
-    suspend fun fetchUser(): User? {
-        val snapshot = users.document(currentUid()).get().await()
-        return snapshot.toObject(User::class.java)
-    }
+    suspend fun fetchUser(): User? =
+        users.document(currentUid()).get().await().toObject(User::class.java)
+
+    suspend fun fetchUserById(userId: String): User? =
+        users.document(userId).get().await().toObject(User::class.java)
 
     suspend fun fetchFriends(limit: Long = 8): List<Friend> {
         if (limit <= 0) return emptyList()
 
         val myId = currentUid()
-        val allUsers = users
-            .limit(limit + 1) // +1 so we can skip ourselves
+        val snapshot = users
+            .limit(limit + 1)
             .get()
             .await()
-            .documents
 
-        return allUsers
+        return snapshot.documents
             .filter { it.id != myId }
             .take(limit.toInt())
             .map { doc ->
@@ -68,6 +69,19 @@ class UserRepository(
         val ref = storage.reference.child(path)
         ref.putFile(imageUri).await()
         return ref.downloadUrl.await().toString()
+    }
+
+    suspend fun getMembershipsForUser(userId: String = currentUid()): List<GameMember> {
+        val snapshot = users
+            .document(userId)
+            .collection("memberships")
+            .get()
+            .await()
+        return snapshot.documents.mapNotNull { doc ->
+            val membership = doc.toObject(GameMember::class.java)
+            // Use document ID as gameId if the field is empty (for empty membership documents)
+            membership?.copy(gameId = membership.gameId.ifBlank { doc.id })
+        }
     }
 
     private suspend fun updateUserFields(fields: Map<String, Any?>) {

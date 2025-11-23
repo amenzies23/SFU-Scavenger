@@ -14,6 +14,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 
 data class MapUiState(
@@ -43,18 +45,21 @@ class MapViewModel(
      * To be called from the MapScreen with the gameId passed in
      */
     fun start(gameId: String) {
-        // Avoid starting multiple collectors if recomposed
         if (listenJob != null) return
 
         listenJob = viewModelScope.launch {
             _uiState.update { it.copy(loading = true, error = null) }
 
-            val name = gameRepo.getGameName(gameId) ?: "Unknown game"
+            val name = withContext(Dispatchers.IO) {
+                gameRepo.getGameName(gameId) ?: "Unknown game"
+            }
             _uiState.update { it.copy(gameName = name) }
 
             currentGameId = gameId
 
-            val teamId = teamRepo.getUserTeamId(gameId)
+            val teamId = withContext(Dispatchers.IO) {
+                teamRepo.getUserTeamId(gameId)
+            }
             if (teamId == null) {
                 _uiState.update {
                     it.copy(
@@ -65,15 +70,21 @@ class MapViewModel(
                 return@launch
             }
 
-            // Listening for submissions from this team
-            submissionRepo.listenToTeamSubmissions(gameId, teamId).collect { submissions ->
-                _uiState.update {
-                    it.copy(
-                        submissions = submissions,
-                        loading = false,
-                        error = null
-                    )
-                }
+            // Collect the Firestore flow on IO too
+            withContext(Dispatchers.IO) {
+                submissionRepo.listenToTeamSubmissions(gameId, teamId)
+                    .collect { submissions ->
+                        // Switch back to main only for state update
+                        withContext(Dispatchers.Main) {
+                            _uiState.update {
+                                it.copy(
+                                    submissions = submissions,
+                                    loading = false,
+                                    error = null
+                                )
+                            }
+                        }
+                    }
             }
         }
     }
@@ -91,7 +102,9 @@ class MapViewModel(
 
         viewModelScope.launch {
             val task = try {
-                taskRepo.getTask(gameId, submission.taskId)
+                withContext(Dispatchers.IO) {
+                    taskRepo.getTask(gameId, submission.taskId)
+                }
             } catch (e: Exception) {
                 null
             }

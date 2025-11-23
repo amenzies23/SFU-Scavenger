@@ -32,7 +32,9 @@ import androidx.core.view.WindowInsetsControllerCompat
 import com.aark.sfuscavenger.ui.login.AuthViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.aark.sfuscavenger.ui.components.TopBar
+import com.aark.sfuscavenger.ui.events.CreateGameScreen
 import com.aark.sfuscavenger.ui.history.HistoryScreen
+import com.aark.sfuscavenger.ui.history.ResultsScreen
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -56,14 +58,6 @@ fun SFUScavengerApp() {
     val state by vm.state.collectAsStateWithLifecycle()
     var showProfileSettings by rememberSaveable { mutableStateOf(false) }
 
-    LaunchedEffect(state.isLoggedIn) {
-        if (state.isLoggedIn) {
-            navController.navigate("home") { popUpTo("login") { inclusive = true } }
-        } else {
-            navController.navigate("login") { popUpTo(0) }
-        }
-    }
-
     // Tracking the current route to display in the TopBar component
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
@@ -74,6 +68,9 @@ fun SFUScavengerApp() {
         currentRoute == "history" -> "History"
         currentRoute == "profile" -> "Profile"
         currentRoute?.startsWith("lobby/") == true -> "Lobby"
+        currentRoute?.startsWith("createGame") == true -> {
+            if (currentRoute.contains("gameId=")) "Edit Game" else "Create Game"
+        }
         else -> null
     }
 
@@ -134,7 +131,42 @@ fun SFUScavengerApp() {
                         val gameId = backStackEntry.arguments?.getString("gameId") ?: ""
                         LobbyScreen(navController, gameId)
                     }
+                    composable(
+                        route = "createGame?gameId={gameId}"
+                    ) { backStackEntry ->
+                        val gameId = backStackEntry.arguments?.getString("gameId")
+                        CreateGameScreen(navController, gameId = gameId) }
+                    composable(
+                        route = "results/{gameId}/{teamId}"
+                    ) { backStackEntry ->
+                        val gameId = backStackEntry.arguments?.getString("gameId").orEmpty()
+                        val teamArg = backStackEntry.arguments?.getString("teamId").orEmpty()
+                        val teamId = teamArg.takeUnless { it == "none" }
+                        ResultsScreen(navController, gameId, teamId)
+                    }
+                }
+            }
+        }
+    }
 
+    // Navigation depending on login state, also  need to check if Nav graph is ready
+    LaunchedEffect(state.isLoggedIn, currentRoute) {
+        if (currentRoute != null) {
+            val isAuthenticatedRoute = currentRoute == "home" || 
+                currentRoute == "events" || 
+                currentRoute == "history" || 
+                currentRoute == "profile" || 
+                currentRoute.startsWith("lobby/") || 
+                currentRoute.startsWith("results/") ||
+                currentRoute.startsWith("createGame")
+            
+            if (state.isLoggedIn && !isAuthenticatedRoute) {
+                navController.navigate("home") { 
+                    popUpTo("login") { inclusive = true } 
+                }
+            } else if (!state.isLoggedIn && currentRoute != "login" && currentRoute != "signup") {
+                navController.navigate("login") { 
+                    popUpTo(0) 
                 }
             }
         }
