@@ -52,6 +52,8 @@ class LobbyViewModel(
     private var gameListener: ListenerRegistration? = null
     private var teamsListener: ListenerRegistration? = null
 
+    private var memberListeners = mutableMapOf<String, ListenerRegistration>()
+
     /**
      * Call once from LobbyScreen for a given gameId
      */
@@ -101,46 +103,59 @@ class LobbyViewModel(
      */
     private fun observeTeamsAndMembers(gameId: String) {
         teamsListener?.remove()
+        memberListeners.values.forEach { it.remove() }
+        memberListeners.clear()
 
         teamsListener = teamRepo.listenToTeams(gameId) { teamsList ->
-            viewModelScope.launch {
-                try {
-                    val uid = auth.currentUser?.uid
 
-                    val teamsUi = teamsList.map { team ->
-                        val members = teamRepo.getTeamMembers(gameId, team.id)
+            val initialTeams = teamsList.map { team ->
+                LobbyTeamUi(
+                    id = team.id,
+                    name = team.name,
+                    members = emptyList()
+                )
+            }
 
+            _state.update {
+                it.copy(
+                    teams = initialTeams,
+                    loading = false,
+                    error = null
+                )
+            }
+
+            teamsList.forEach { team ->
+
+                memberListeners[team.id]?.remove()
+
+                val reg = teamRepo.listenToTeamMembers(gameId, team.id) { members ->
+
+                    viewModelScope.launch {
                         val memberNames = members.map { member ->
                             val userDoc = usersCollection.document(member.userId).get().await()
-                            val displayName = userDoc.getString("displayName")
-                            val email = userDoc.getString("email")
-                            displayName ?: email ?: "Player"
+                            userDoc.getString("displayName")
+                                ?: userDoc.getString("email")
+                                ?: "Player"
                         }
 
-                        LobbyTeamUi(
-                            id = team.id,
-                            name = team.name,
-                            members = memberNames
-                        )
+                        _state.update { old ->
+                            val updatedTeams = old.teams.map {
+                                if (it.id == team.id) it.copy(members = memberNames)
+                                else it
+                            }
+                            old.copy(teams = updatedTeams)
+                        }
                     }
-
-                    // detect user's team
-                    val currentTeamId = uid?.let {
-                        teamRepo.getUserTeamId(gameId)
-                    }
-
-                    _state.update {
-                        it.copy(
-                            teams = teamsUi,
-                            currentUserTeamId = currentTeamId,
-                            loading = false,
-                            error = null
-                        )
-                    }
-
-                } catch (ex: Exception) {
-                    _state.update { it.copy(error = ex.message, loading = false) }
                 }
+
+                memberListeners[team.id] = reg
+            }
+
+            viewModelScope.launch {
+                val uidTeam = auth.currentUser?.uid?.let {
+                    teamRepo.getUserTeamId(gameId)
+                }
+                _state.update { it.copy(currentUserTeamId = uidTeam) }
             }
         }
     }
