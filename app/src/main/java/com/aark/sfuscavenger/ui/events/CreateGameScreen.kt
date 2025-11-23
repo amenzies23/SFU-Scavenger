@@ -174,25 +174,6 @@ private fun GameTab(navController: NavController,
                 )
             }
 
-//            item {
-//                // Game Name
-//                TextField(
-//                    value = game.value.name,
-//                    onValueChange = { vm.updateName(it) },
-//                    label = { Text("Game Name", color = Maroon, fontWeight = Bold) },
-//                    placeholder = { Text("Enter game name") },
-//                    modifier = Modifier.fillMaxWidth(),
-//                    shape = RoundedCornerShape(8.dp),
-//                    colors = TextFieldDefaults.colors(
-//                        focusedIndicatorColor = Color.Transparent,
-//                        unfocusedIndicatorColor = Color.Transparent,
-//                        focusedContainerColor = LightBeige,
-//                        unfocusedContainerColor = LightBeige,
-//                    ),
-//                    singleLine = true
-//                )
-//            }
-
             item {
                 // Join Mode Toggle
                 Row(

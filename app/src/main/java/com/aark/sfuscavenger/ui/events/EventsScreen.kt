@@ -80,19 +80,6 @@ fun EventsScreen(navController: NavController, vm: EventsViewModel = viewModel()
         modifier = Modifier.background(Beige),
         vm = vm
     )
-
-//    Scaffold(
-//        containerColor = Beige
-//    ) { paddingValues ->
-//        EventsContent(
-//            selectedTabIndex = selectedTab.intValue,
-//            onTabSelected = { selectedTab.intValue = it },
-//            scrollBehavior = scrollBehavior,
-//            navController = navController,
-//            modifier = Modifier.padding(paddingValues),
-//            vm = vm
-//        )
-//    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -108,7 +95,6 @@ private fun EventsContent(
 ) {
     Column(
         modifier = modifier
-//            .nestedScroll(scrollBehavior.nestedScrollConnection)
             .fillMaxSize()
     ){
         TabRow(
@@ -148,15 +134,10 @@ private fun JoinTab(navController: NavController,
                     vm: EventsViewModel,
                     modifier: Modifier = Modifier
 ) {
-//    val games = vm.games.collectAsState()
     val publicGames = vm.publicGames.collectAsState()
     val privateGames = vm.privateGames.collectAsState()
 //    val loading = vm.loading.collectAsState()
     val error = vm.error.collectAsState()
-
-//    LaunchedEffect(Unit) {
-//        vm.loadGames()
-//    }
 
     Column(
         modifier = modifier
@@ -281,7 +262,6 @@ private fun MyGamesRow(
                 color = LightBeige,
                 shape = RoundedCornerShape(16.dp)
             )
-//            .clickable { isExpanded = !isExpanded }
             .clickable(
                 indication = null,
                 interactionSource = remember { MutableInteractionSource() }
@@ -353,27 +333,6 @@ private fun MyGamesRow(
         }
     }
 
-//    Row(
-//        modifier = Modifier
-//            .padding(vertical = 8.dp)
-//            .fillMaxWidth()
-//            .heightIn(min = 56.dp)
-//            .background(
-//                color = LightBeige,
-//                shape = RoundedCornerShape(16.dp)
-//            ),
-//        verticalAlignment = Alignment.CenterVertically
-//    ) {
-//        Text(
-//            text = game.name,
-//            color = Black,
-//            modifier = Modifier
-//                .weight(1f)
-//                .padding(start = 16.dp),
-//            fontWeight = FontWeight.Bold
-//        )
-//    }
-
 }
 
 @Composable
@@ -439,41 +398,6 @@ private fun GameRow(
         }
 
     }
-
-//    Row(
-//        modifier = Modifier
-//            .padding(vertical = 8.dp)
-//            .fillMaxWidth()
-//            .heightIn(min = 56.dp)
-//            .background(
-//                color = LightBeige,
-//                shape = RoundedCornerShape(16.dp)
-//            ),
-//        verticalAlignment = Alignment.CenterVertically
-//    ) {
-//        Text(
-//            text = game.name,
-//            color = Black,
-//            modifier = Modifier
-//                .weight(1f)
-//                .padding(start = 16.dp),
-//            fontWeight = FontWeight.Bold
-//        )
-//
-//        Button(
-//            onClick = onJoinClick,
-//            shape = RoundedCornerShape(16.dp),
-//            colors = ButtonDefaults.buttonColors(
-//                containerColor = Maroon,
-//                contentColor = White
-//            ),
-//            modifier = Modifier
-//                .padding(end = 8.dp)
-//
-//        ) {
-//            Text("Join")
-//        }
-//    }
 }
 
 @Composable
