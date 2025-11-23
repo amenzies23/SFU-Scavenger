@@ -11,11 +11,7 @@ import com.google.firebase.storage.FirebaseStorage
 import kotlinx.coroutines.tasks.await
 import java.util.UUID
 
-/**
- * Central place for reading/writing user-related Firestore data.
- * Used by the profile screen (friends, avatar updates) and by the
- * history feature (memberships list).
- */
+
 class UserRepository(
     private val auth: FirebaseAuth = FirebaseAuth.getInstance(),
     private val firestore: FirebaseFirestore = FirebaseFirestore.getInstance(),

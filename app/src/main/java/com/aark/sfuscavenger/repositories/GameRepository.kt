@@ -1,13 +1,17 @@
 package com.aark.sfuscavenger.repositories
 
+import androidx.compose.runtime.snapshotFlow
 import com.aark.sfuscavenger.data.models.Game
 import com.aark.sfuscavenger.data.models.TeamSummary
 import com.google.firebase.Timestamp
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FieldPath
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.GeoPoint
+import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.tasks.await
 import kotlin.random.Random
+import kotlinx.coroutines.channels.awaitClose
 
 /**
  * Sample GameRepository to get an idea of how to interact with Firebase Firestore
@@ -92,7 +96,7 @@ class GameRepository(
         }
         return games
     }
-    
+
     suspend fun getGameName(gameId: String): String? {
         val snap = db.collection("games").document(gameId).get().await()
         return snap.getString("name")
@@ -107,5 +111,49 @@ class GameRepository(
             .get()
             .await()
         return snapshot.toObject(TeamSummary::class.java)?.copy(id = snapshot.id)
+    fun observeGames() = callbackFlow<List<Game>> {
+        val listener = gamesCollection.addSnapshotListener { snapshot, error ->
+            if (error != null) {
+                close(error)
+                return@addSnapshotListener
+            }
+            val list = snapshot?.documents?.mapNotNull { doc ->
+                doc.toObject(Game::class.java)?.copy(id = doc.id)
+            } ?: emptyList()
+            trySend(list)
+        }
+        awaitClose {
+            listener.remove()
+        }
+    }
+
+
+    /**
+     * Returns all games with status == "started" that the current user is a member of
+     */
+    suspend fun getLiveGamesForCurrentUser(): List<Game> {
+        val uid = auth.currentUser?.uid ?: return emptyList()
+
+        val membershipsSnap = db.collection("users")
+            .document(uid)
+            .collection("memberships")
+            .get()
+            .await()
+
+        if (membershipsSnap.isEmpty) return emptyList()
+
+        val gameIds = membershipsSnap.documents.map { it.id }
+
+        val snapshot = gamesCollection
+            .whereIn(FieldPath.documentId(), gameIds)
+            .whereEqualTo("status", "started")
+            .get()
+            .await()
+
+        if (snapshot.isEmpty) return emptyList()
+
+        return snapshot.documents.mapNotNull { doc ->
+            doc.toObject(Game::class.java)?.copy(id = doc.id)
+        }
     }
 }

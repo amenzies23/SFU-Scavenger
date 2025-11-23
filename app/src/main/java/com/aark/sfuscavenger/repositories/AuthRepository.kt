@@ -33,11 +33,13 @@ class AuthRepository(
 
         // Create Firestore user document
         val user = User(
-            displayName = null, // will be filled in later
+            displayName = null,     // will be filled in later
             email = trimmedEmail,
+            username = null,
             level = 1,
             xp = 0,
-            createdAt = Timestamp.now()
+            createdAt = Timestamp.now(),
+            photoUrl = null
         )
 
         usersCollection.document(uid).set(user).await()

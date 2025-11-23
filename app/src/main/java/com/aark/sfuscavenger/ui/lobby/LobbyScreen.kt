@@ -1,5 +1,8 @@
 package com.aark.sfuscavenger.ui.lobby
 
+import android.content.Intent
+import androidx.compose.ui.platform.LocalContext
+import com.aark.sfuscavenger.GameActivity
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -36,9 +39,19 @@ fun LobbyScreen(
     viewModel: LobbyViewModel = viewModel()
 ) {
     val state by viewModel.state.collectAsState()
+    val context = LocalContext.current
 
     LaunchedEffect(gameId) {
         viewModel.startObserving(gameId)
+    }
+    // For launching GameActivity when the game status changes to started
+    LaunchedEffect(state.gameStatus) {
+        if (state.gameStatus == "started" && state.gameId != null) {
+            val intent = Intent(context, GameActivity::class.java).apply {
+                putExtra("gameId", state.gameId)
+            }
+            context.startActivity(intent)
+        }
     }
 
     Surface(
@@ -185,7 +198,7 @@ private fun LobbyContent(
                     team = team,
                     isSelected = team.id == state.currentUserTeamId,
                     isHost = state.isHost,
-                    canJoin = !state.isHost && state.gameStatus == "draft",
+                    canJoin = !state.isHost && state.gameStatus == "live",
                     onClick = { onJoinTeam(team.id) }
                 )
             }
@@ -226,14 +239,14 @@ private fun LobbyContent(
             if (state.isHost) {
                 Button(
                     onClick = onStartGame,
-                    enabled = state.gameStatus == "draft" && totalPlayers > 0,
+                    enabled = state.gameStatus == "live" && totalPlayers > 0,
                     colors = ButtonDefaults.buttonColors(
                         containerColor = Maroon,
                         contentColor = White
                     )
                 ) {
                     Text(
-                        text = if (state.gameStatus == "live") "Game Started" else "Start Game"
+                        text = if (state.gameStatus == "started") "Game Started" else "Start Game"
                     )
                 }
             }
