@@ -382,41 +382,98 @@ private fun GameRow(
     onJoinClick: () -> Unit,
 ){
     Log.d("GameRow", "Displaying row for: ${game.name}")
+    var isExpanded by remember { mutableStateOf(false) }
 
-    Row(
+    Column(
         modifier = Modifier
             .padding(vertical = 8.dp)
             .fillMaxWidth()
-            .heightIn(min = 56.dp)
             .background(
                 color = LightBeige,
                 shape = RoundedCornerShape(16.dp)
-            ),
-        verticalAlignment = Alignment.CenterVertically
+            )
+            .clickable(
+                indication = null,
+                interactionSource = remember { MutableInteractionSource() }
+            ) { isExpanded = !isExpanded }
+            .animateContentSize(
+                animationSpec = spring(
+                    dampingRatio = Spring.DampingRatioMediumBouncy,
+                    stiffness = Spring.StiffnessLow
+                )
+            )
+            .padding(16.dp)
+
     ) {
-        Text(
-            text = game.name,
-            color = Black,
-            modifier = Modifier
-                .weight(1f)
-                .padding(start = 16.dp),
-            fontWeight = FontWeight.Bold
-        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ){
+            Text(
+                text = game.name,
+                color = Black,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.weight(1f)
+            )
 
-        Button(
-            onClick = onJoinClick,
-            shape = RoundedCornerShape(16.dp),
-            colors = ButtonDefaults.buttonColors(
-                containerColor = Maroon,
-                contentColor = White
-            ),
-            modifier = Modifier
-                .padding(end = 8.dp)
-
-        ) {
-            Text("Join")
+            Button(
+                onClick = onJoinClick,
+                shape = RoundedCornerShape(16.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Maroon,
+                    contentColor = White
+                )
+            ) {
+                Text("Join")
+            }
         }
+
+        if (isExpanded && game.description.isNotBlank()) {
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = game.description,
+                color = DarkOrange,
+                fontSize = 14.sp,
+                modifier = Modifier.fillMaxWidth()
+            )
+        }
+
     }
+
+//    Row(
+//        modifier = Modifier
+//            .padding(vertical = 8.dp)
+//            .fillMaxWidth()
+//            .heightIn(min = 56.dp)
+//            .background(
+//                color = LightBeige,
+//                shape = RoundedCornerShape(16.dp)
+//            ),
+//        verticalAlignment = Alignment.CenterVertically
+//    ) {
+//        Text(
+//            text = game.name,
+//            color = Black,
+//            modifier = Modifier
+//                .weight(1f)
+//                .padding(start = 16.dp),
+//            fontWeight = FontWeight.Bold
+//        )
+//
+//        Button(
+//            onClick = onJoinClick,
+//            shape = RoundedCornerShape(16.dp),
+//            colors = ButtonDefaults.buttonColors(
+//                containerColor = Maroon,
+//                contentColor = White
+//            ),
+//            modifier = Modifier
+//                .padding(end = 8.dp)
+//
+//        ) {
+//            Text("Join")
+//        }
+//    }
 }
 
 @Composable
