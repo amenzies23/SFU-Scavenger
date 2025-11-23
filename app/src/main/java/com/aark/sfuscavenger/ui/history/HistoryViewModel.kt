@@ -3,6 +3,7 @@ package com.aark.sfuscavenger.ui.history
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.aark.sfuscavenger.repositories.GameRepository
+import com.aark.sfuscavenger.repositories.TeamRepository
 import com.aark.sfuscavenger.repositories.UserRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -25,6 +26,7 @@ data class HistoryCard(
 
 class HistoryViewModel(
     private val gameRepository: GameRepository = GameRepository(),
+    private val teamRepository: TeamRepository = TeamRepository(),
     private val userRepository: UserRepository = UserRepository()
 ) : ViewModel() {
 
@@ -54,7 +56,7 @@ class HistoryViewModel(
                 memberships.mapNotNull { membership ->
                     val game = gameRepository.getGame(membership.gameId) ?: return@mapNotNull null
                     val placementLabel = membership.teamId?.let { teamId ->
-                        gameRepository.getTeamSummary(membership.gameId, teamId)
+                        teamRepository.getTeamSummary(membership.gameId, teamId)
                             ?.placement
                             ?.toOrdinalString()
                     } ?: "In progress"
