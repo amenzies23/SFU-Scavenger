@@ -83,4 +83,15 @@ class EventsViewModel(
         }
     }
 
+    fun deleteGame(gameId: String) {
+        viewModelScope.launch {
+            _error.value = null
+            try {
+                gameRepo.deleteGame(gameId)
+            } catch (t: Throwable) {
+                _error.value = t.message ?: "Failed to delete game"
+            }
+        }
+    }
+
 }

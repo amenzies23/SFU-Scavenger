@@ -146,4 +146,8 @@ class GameRepository(
             doc.toObject(Game::class.java)?.copy(id = doc.id)
         }
     }
+
+    suspend fun deleteGame(gameId: String) {
+        gamesCollection.document(gameId).delete().await()
+    }
 }
