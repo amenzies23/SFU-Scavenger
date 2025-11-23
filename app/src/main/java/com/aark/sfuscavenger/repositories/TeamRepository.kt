@@ -3,6 +3,7 @@ package com.aark.sfuscavenger.repositories
 import android.util.Log
 import com.aark.sfuscavenger.data.model.TeamMember
 import com.aark.sfuscavenger.data.models.Team
+import com.aark.sfuscavenger.data.models.TeamSummary
 import com.google.firebase.Timestamp
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FieldValue
@@ -400,5 +401,47 @@ class TeamRepository(
             .document(gameId)
 
         membershipRef.delete().await()
+    }
+
+    /**
+     * Get team summary for a specific team in a game
+     */
+    suspend fun getTeamSummary(gameId: String, teamId: String): TeamSummary? {
+        val snapshot = db.collection("games")
+            .document(gameId)
+            .collection("teams")
+            .document(teamId)
+            .get()
+            .await()
+        return snapshot.toObject(TeamSummary::class.java)?.copy(id = snapshot.id)
+    }
+
+    /**
+     * Listener for all teams in a game
+     * Used by the Leaderboard to get live updates when scores change.
+     */
+    fun listenToTeamsFlow(
+        gameId: String
+    ): Flow<List<Team>> = callbackFlow {
+        val ref = db.collection("games")
+            .document(gameId)
+            .collection("teams")
+
+        val registration: ListenerRegistration =
+            ref.addSnapshotListener { snapshot, error ->
+                if (error != null || snapshot == null) {
+                    Log.w(TAG, "listenToTeamsFlow: error", error)
+                    trySend(emptyList())
+                    return@addSnapshotListener
+                }
+
+                val teams = snapshot.documents.mapNotNull { doc ->
+                    doc.toObject(Team::class.java)?.copy(id = doc.id)
+                }
+
+                trySend(teams)
+            }
+
+        awaitClose { registration.remove() }
     }
 }

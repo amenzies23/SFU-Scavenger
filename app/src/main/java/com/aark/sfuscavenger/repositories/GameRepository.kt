@@ -2,7 +2,6 @@ package com.aark.sfuscavenger.repositories
 
 import androidx.compose.runtime.snapshotFlow
 import com.aark.sfuscavenger.data.models.Game
-import com.aark.sfuscavenger.data.models.TeamSummary
 import com.google.firebase.Timestamp
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FieldPath
@@ -102,16 +101,6 @@ class GameRepository(
         return snap.getString("name")
     }
 
-    
-    suspend fun getTeamSummary(gameId: String, teamId: String): TeamSummary? {
-        val snapshot = gamesCollection
-            .document(gameId)
-            .collection("teams")
-            .document(teamId)
-            .get()
-            .await()
-        return snapshot.toObject(TeamSummary::class.java)?.copy(id = snapshot.id)
-    }
     fun observeGames() = callbackFlow<List<Game>> {
         val listener = gamesCollection.addSnapshotListener { snapshot, error ->
             if (error != null) {
@@ -172,4 +161,34 @@ class GameRepository(
 
         gamesCollection.document(game.id).update(updates).await()
     }
+
+    /**
+     * Returns all games with status == "ended" and the user has the membership of the game as well
+     */
+    suspend fun getEndedGamesForCurrentUser(): List<Game> {
+        val uid = auth.currentUser?.uid ?: return emptyList()
+
+        val membershipsSnap = db.collection("users")
+            .document(uid)
+            .collection("memberships")
+            .get()
+            .await()
+
+        if (membershipsSnap.isEmpty) return emptyList()
+
+        val gameIds = membershipsSnap.documents.map { it.id }
+
+        val snapshot = gamesCollection
+            .whereIn(FieldPath.documentId(), gameIds)
+            .whereEqualTo("status", "ended")
+            .get()
+            .await()
+
+        if (snapshot.isEmpty) return emptyList()
+
+        return snapshot.documents.mapNotNull { doc ->
+            doc.toObject(Game::class.java)?.copy(id = doc.id)
+        }
+    }
+
 }
