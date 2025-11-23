@@ -23,6 +23,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -125,7 +126,7 @@ private fun HistoryLoading() {
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Top
     ) {
-        CircularProgressIndicator()
+        CircularProgressIndicator(color = Maroon)
         Spacer(modifier = Modifier.height(12.dp))
         Text("Loading history…")
     }
@@ -163,7 +164,13 @@ private fun HistoryEmpty(onRefresh: () -> Unit) {
             style = MaterialTheme.typography.bodyLarge
         )
         Spacer(modifier = Modifier.height(12.dp))
-        Button(onClick = onRefresh) {
+        Button(
+            onClick = onRefresh,
+            colors = ButtonDefaults.buttonColors(
+                containerColor = Maroon,
+                contentColor = Color.White
+            )
+        ) {
             Text("Refresh")
         }
     }
