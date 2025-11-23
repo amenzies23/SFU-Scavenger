@@ -2,6 +2,7 @@ package com.aark.sfuscavenger.repositories
 
 import androidx.compose.runtime.snapshotFlow
 import com.aark.sfuscavenger.data.models.Game
+import com.aark.sfuscavenger.data.models.TeamSummary
 import com.google.firebase.Timestamp
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FieldPath
@@ -101,6 +102,16 @@ class GameRepository(
         return snap.getString("name")
     }
 
+    
+    suspend fun getTeamSummary(gameId: String, teamId: String): TeamSummary? {
+        val snapshot = gamesCollection
+            .document(gameId)
+            .collection("teams")
+            .document(teamId)
+            .get()
+            .await()
+        return snapshot.toObject(TeamSummary::class.java)?.copy(id = snapshot.id)
+    }
     fun observeGames() = callbackFlow<List<Game>> {
         val listener = gamesCollection.addSnapshotListener { snapshot, error ->
             if (error != null) {
