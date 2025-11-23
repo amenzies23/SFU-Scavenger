@@ -415,4 +415,33 @@ class TeamRepository(
             .await()
         return snapshot.toObject(TeamSummary::class.java)?.copy(id = snapshot.id)
     }
+
+    /**
+     * Listener for all teams in a game
+     * Used by the Leaderboard to get live updates when scores change.
+     */
+    fun listenToTeamsFlow(
+        gameId: String
+    ): Flow<List<Team>> = callbackFlow {
+        val ref = db.collection("games")
+            .document(gameId)
+            .collection("teams")
+
+        val registration: ListenerRegistration =
+            ref.addSnapshotListener { snapshot, error ->
+                if (error != null || snapshot == null) {
+                    Log.w(TAG, "listenToTeamsFlow: error", error)
+                    trySend(emptyList())
+                    return@addSnapshotListener
+                }
+
+                val teams = snapshot.documents.mapNotNull { doc ->
+                    doc.toObject(Team::class.java)?.copy(id = doc.id)
+                }
+
+                trySend(teams)
+            }
+
+        awaitClose { registration.remove() }
+    }
 }
