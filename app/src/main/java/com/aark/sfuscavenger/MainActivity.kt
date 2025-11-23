@@ -33,6 +33,7 @@ import com.aark.sfuscavenger.ui.login.AuthViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.aark.sfuscavenger.ui.components.TopBar
 import com.aark.sfuscavenger.ui.history.HistoryScreen
+import com.aark.sfuscavenger.ui.history.ResultsScreen
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -134,9 +135,24 @@ fun SFUScavengerApp() {
                         val gameId = backStackEntry.arguments?.getString("gameId") ?: ""
                         LobbyScreen(navController, gameId)
                     }
-
+                    composable(
+                        route = "results/{gameId}/{teamId}"
+                    ) { backStackEntry ->
+                        val gameId = backStackEntry.arguments?.getString("gameId").orEmpty()
+                        val teamArg = backStackEntry.arguments?.getString("teamId").orEmpty()
+                        val teamId = teamArg.takeUnless { it == "none" }
+                        ResultsScreen(navController, gameId, teamId)
+                    }
                 }
             }
+        }
+    }
+
+    LaunchedEffect(state.isLoggedIn) {
+        if (state.isLoggedIn) {
+            navController.navigate("home") { popUpTo("login") { inclusive = true } }
+        } else {
+            navController.navigate("login") { popUpTo(0) }
         }
     }
 }
