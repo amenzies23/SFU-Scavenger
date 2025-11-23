@@ -32,6 +32,7 @@ import androidx.core.view.WindowInsetsControllerCompat
 import com.aark.sfuscavenger.ui.login.AuthViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.aark.sfuscavenger.ui.components.TopBar
+import com.aark.sfuscavenger.ui.events.CreateGameScreen
 import com.aark.sfuscavenger.ui.history.HistoryScreen
 
 class MainActivity : ComponentActivity() {
@@ -73,6 +74,7 @@ fun SFUScavengerApp() {
         currentRoute == "events" -> "Events"
         currentRoute == "history" -> "History"
         currentRoute == "profile" -> "Profile"
+        currentRoute == "createGame" -> "Create Game"
         currentRoute?.startsWith("lobby/") == true -> "Lobby"
         else -> null
     }
@@ -134,6 +136,7 @@ fun SFUScavengerApp() {
                         val gameId = backStackEntry.arguments?.getString("gameId") ?: ""
                         LobbyScreen(navController, gameId)
                     }
+                    composable("createGame") { CreateGameScreen(navController) }
 
                 }
             }

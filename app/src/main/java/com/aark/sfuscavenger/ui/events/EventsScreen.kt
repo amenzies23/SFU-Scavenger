@@ -204,7 +204,8 @@ private fun JoinTab(navController: NavController,
 @Composable
 private fun CreateTab(navController: NavController,
                       vm: EventsViewModel,
-                      modifier: Modifier = Modifier) {
+                      modifier: Modifier = Modifier
+) {
     val myGames = vm.myGames.collectAsState()
 
     Column(
@@ -245,6 +246,18 @@ private fun CreateTab(navController: NavController,
         }
 
         Spacer(modifier = Modifier.height(8.dp))
+
+        Button(
+            onClick = { navController.navigate("createGame") },
+            shape = RoundedCornerShape(16.dp),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = Maroon,
+                contentColor = White
+            ),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text("Create Game +")
+        }
 
 
     }
