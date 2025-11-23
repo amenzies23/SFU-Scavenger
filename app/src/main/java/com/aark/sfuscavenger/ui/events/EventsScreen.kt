@@ -235,6 +235,7 @@ private fun CreateTab(navController: NavController,
                     },
                     onEditClick = {
                         Log.d("MyGamesRow", "Edit clicked for game: ${game.name}")
+                        navController.navigate("createGame?gameId=${game.id}")
                     },
                     onDeleteClick = {
                         Log.d("MyGamesRow", "Delete clicked for game: ${game.name}")

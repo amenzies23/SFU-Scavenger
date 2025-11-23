@@ -74,8 +74,10 @@ fun SFUScavengerApp() {
         currentRoute == "events" -> "Events"
         currentRoute == "history" -> "History"
         currentRoute == "profile" -> "Profile"
-        currentRoute == "createGame" -> "Create Game"
         currentRoute?.startsWith("lobby/") == true -> "Lobby"
+        currentRoute?.startsWith("createGame") == true -> {
+            if (currentRoute.contains("gameId=")) "Edit Game" else "Create Game"
+        }
         else -> null
     }
 
@@ -136,7 +138,11 @@ fun SFUScavengerApp() {
                         val gameId = backStackEntry.arguments?.getString("gameId") ?: ""
                         LobbyScreen(navController, gameId)
                     }
-                    composable("createGame") { CreateGameScreen(navController) }
+                    composable(
+                        route = "createGame?gameId={gameId}"
+                    ) { backStackEntry ->
+                        val gameId = backStackEntry.arguments?.getString("gameId")
+                        CreateGameScreen(navController, gameId = gameId) }
 
                 }
             }

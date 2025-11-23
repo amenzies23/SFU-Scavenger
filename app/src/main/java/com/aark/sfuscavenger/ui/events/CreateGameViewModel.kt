@@ -27,6 +27,28 @@ class CreateGameViewModel(
     private val _gameCreated = MutableStateFlow(false)
     val gameCreated: StateFlow<Boolean> = _gameCreated
 
+    private var isEditMode = false
+
+    fun loadGame(gameId: String) {
+        viewModelScope.launch {
+            _loading.value = true
+            _error.value = null
+            try {
+                val existingGame = gameRepo.getGame(gameId)
+                if (existingGame != null) {
+                    _game.value = existingGame
+                    isEditMode = true
+                } else {
+                    _error.value = "Game not found"
+                }
+            } catch (e: Exception) {
+                _error.value = e.message ?: "Failed to load game"
+            } finally {
+                _loading.value = false
+            }
+        }
+    }
+
     fun updateName(name: String) {
         _game.value = _game.value.copy(name = name)
     }
@@ -60,14 +82,20 @@ class CreateGameViewModel(
                     return@launch
                 }
 
-                gameRepo.createGame(
-                    name = currentGame.name,
-                    lat = currentGame.location?.latitude ?: 0.0,
-                    lng = currentGame.location?.longitude ?: 0.0,
-                    joinMode = currentGame.joinMode,
-                    joinCode = currentGame.joinCode?.ifBlank { null},
-                    description = currentGame.description
-                )
+                if (isEditMode) {
+                    // Update existing game
+                    gameRepo.updateGame(currentGame)
+                } else {
+                    // Create new game
+                    gameRepo.createGame(
+                        name = currentGame.name,
+                        lat = currentGame.location?.latitude ?: 49.2827,
+                        lng = currentGame.location?.longitude ?: -123.1207,
+                        joinMode = currentGame.joinMode,
+                        joinCode = currentGame.joinCode?.ifBlank { null },
+                        description = currentGame.description
+                    )
+                }
 
                 _gameCreated.value = true
             } catch (e: Exception) {

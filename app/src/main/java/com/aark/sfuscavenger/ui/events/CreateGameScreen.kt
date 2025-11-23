@@ -20,6 +20,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -37,15 +38,29 @@ import com.aark.sfuscavenger.ui.theme.Maroon
 import com.aark.sfuscavenger.ui.theme.White
 
 @Composable
-fun CreateGameScreen(navController: NavController, vm: CreateGameViewModel = viewModel()) {
+fun CreateGameScreen(navController: NavController, gameId: String? = null, vm: CreateGameViewModel = viewModel()) {
     val selectedTab = remember { mutableStateOf(0) }
+    val gameCreated = vm.gameCreated.collectAsState()
+
+    LaunchedEffect(gameId) {
+        if (gameId != null) {
+            vm.loadGame(gameId)
+        }
+    }
+
+    LaunchedEffect(gameCreated.value) {
+        if (gameCreated.value) {
+            navController.popBackStack()
+        }
+    }
 
     CreateGameScreenContent(
         selectedTabIndex = selectedTab.value,
         onTabSelected = { selectedTab.value = it },
         navController = navController,
         modifier = Modifier.background(Beige),
-        vm = vm
+        vm = vm,
+        isEditMode = gameId != null
     )
 }
 
@@ -55,7 +70,8 @@ private fun CreateGameScreenContent(
     onTabSelected: (Int) -> Unit,
     navController: NavController,
     modifier: Modifier = Modifier,
-    vm: CreateGameViewModel
+    vm: CreateGameViewModel,
+    isEditMode: Boolean = false
 ) {
     Column(
         modifier = modifier.fillMaxSize()
@@ -83,7 +99,7 @@ private fun CreateGameScreenContent(
         }
 
         when (selectedTabIndex) {
-            0 -> GameTab(navController = navController, vm, modifier = Modifier.fillMaxSize().padding(16.dp))
+            0 -> GameTab(navController = navController, vm, isEditMode = isEditMode, modifier = Modifier.fillMaxSize().padding(16.dp))
             1 -> TasksTab(navController = navController, vm, modifier = Modifier.fillMaxSize().padding(16.dp))
         }
     }
@@ -92,6 +108,7 @@ private fun CreateGameScreenContent(
 @Composable
 private fun GameTab(navController: NavController,
                     vm: CreateGameViewModel,
+                    isEditMode: Boolean = false,
                     modifier: Modifier = Modifier
 ) {
     val game = vm.game.collectAsState()
@@ -174,7 +191,11 @@ private fun GameTab(navController: NavController,
             enabled = !loading.value && game.value.name.isNotBlank()
         ) {
             Text(
-                text = if (loading.value) "Saving..." else "Save Game",
+                text = when {
+                    loading.value -> "Saving..."
+                    isEditMode -> "Update"
+                    else -> "Save"
+                },
                 modifier = Modifier.padding(vertical = 8.dp)
             )
         }

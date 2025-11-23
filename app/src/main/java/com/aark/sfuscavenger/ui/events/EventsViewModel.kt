@@ -44,6 +44,10 @@ class EventsViewModel(
     val publicGames: StateFlow<List<Game>> =
         games.map { list ->
             list.filter { it.status == "live" && it.joinMode == "open" }
+                .sortedWith(
+                    compareBy<Game> { it.name }
+                        .thenBy { it.id }
+                )
         }.stateIn(
             viewModelScope,
             SharingStarted.Eagerly,
@@ -61,7 +65,13 @@ class EventsViewModel(
 
     val myGames: StateFlow<List<Game>> =
         games.map { list ->
-            list.filter { it.status == "draft" && it.ownerId == auth.currentUser?.uid }
+            list
+                .filter { it.status == "draft" && it.ownerId == auth.currentUser?.uid }
+                .sortedWith(
+                    compareByDescending<Game> { it.updatedAt?.seconds ?: 0L }
+                        .thenByDescending { it.createdAt?.seconds ?: 0L }
+                        .thenBy { it.id }
+                )
         }.stateIn(
             viewModelScope,
             SharingStarted.Eagerly,
