@@ -111,6 +111,7 @@ class GameRepository(
             .get()
             .await()
         return snapshot.toObject(TeamSummary::class.java)?.copy(id = snapshot.id)
+    }
     fun observeGames() = callbackFlow<List<Game>> {
         val listener = gamesCollection.addSnapshotListener { snapshot, error ->
             if (error != null) {
