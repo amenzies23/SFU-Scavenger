@@ -1,0 +1,453 @@
+package com.aark.sfuscavenger.ui.tasks
+
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import com.aark.sfuscavenger.data.models.Game
+import com.aark.sfuscavenger.data.models.Submission
+import com.aark.sfuscavenger.data.models.Task
+import com.aark.sfuscavenger.data.models.Team
+import com.google.firebase.Timestamp
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.ListenerRegistration
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.tasks.await
+
+// UI models used by the Task screen
+data class TaskUi(
+    val id: String,
+    val name: String,
+    val description: String,
+    val points: Int,
+    val type: String,
+    val isCompleted: Boolean = false,
+    val isPending: Boolean = false
+)
+
+data class SubmissionUi(
+    val id: String,
+    val taskId: String,
+    val taskName: String,
+    val teamId: String,
+    val teamName: String,
+    val submitterId: String,
+    val submitterName: String,
+    val type: String,
+    val textAnswer: String? = null,
+    val status: String
+)
+
+data class TaskUiState(
+    val loading: Boolean = true,
+    val error: String? = null,
+    val isHost: Boolean = false,
+    val gameId: String? = null,
+    val teamId: String? = null,
+
+    // Player view
+    val tasks: List<TaskUi> = emptyList(),
+    val completedCount: Int = 0,
+
+    // Host view
+    val pendingSubmissions: List<SubmissionUi> = emptyList()
+)
+
+class TaskViewModel(
+    private val db: FirebaseFirestore = FirebaseFirestore.getInstance(),
+    private val auth: FirebaseAuth = FirebaseAuth.getInstance()
+) : ViewModel() {
+
+    private val _state = MutableStateFlow(TaskUiState())
+    val state: StateFlow<TaskUiState> = _state.asStateFlow()
+
+    private var gameListener: ListenerRegistration? = null
+    private var tasksListener: ListenerRegistration? = null
+    private var submissionsListener: ListenerRegistration? = null
+    private var hostSubmissionsListeners: MutableList<ListenerRegistration> = mutableListOf()
+
+    fun start(gameId: String) {
+        if (_state.value.gameId == gameId) return
+
+        _state.update { TaskUiState(loading = true, gameId = gameId) }
+
+        viewModelScope.launch {
+            try {
+                // Load the game document to check if the user is the host
+                val gameDoc = db.collection("games").document(gameId).get().await()
+                val game = gameDoc.toObject(Game::class.java)
+                val uid = auth.currentUser?.uid
+                val isHost = uid != null && uid == game?.ownerId
+
+                _state.update { it.copy(isHost = isHost) }
+
+
+                if (isHost) {
+                    // Hosts watch all submissions from all teams
+                    observeAllSubmissions(gameId)
+                } else {
+                    // Players only watch their own team's tasks + submissions
+                    val teamId = findUserTeam(gameId, uid)
+                    _state.update { it.copy(teamId = teamId) }
+                    if (teamId != null) {
+                        observeTasksAndSubmissions(gameId, teamId)
+                    } else {
+                        _state.update {
+                            // If not on a team, player can't play the game
+                            it.copy(loading = false, error = "You are not in a team")
+                        }
+                    }
+                }
+
+            } catch (e: Exception) {
+                _state.update { it.copy(loading = false, error = e.message) }
+            }
+        }
+    }
+
+
+    /**
+     * Finds which team the user belongs to for this game
+     * We check every team and see if the user ID is in the team's members subcollection
+     */
+    private suspend fun findUserTeam(gameId: String, uid: String?): String? {
+        if (uid == null) return null
+
+        val teamsSnap = db.collection("games")
+            .document(gameId)
+            .collection("teams")
+            .get()
+            .await()
+        // Loop through all teams and look for a matching member document
+        for (teamDoc in teamsSnap.documents) {
+            val memberSnap = teamDoc.reference
+                .collection("members")
+                .document(uid)
+                .get()
+                .await()
+            if (memberSnap.exists()) {
+                return teamDoc.id
+            }
+        }
+        return null
+    }
+
+    /**
+     * Player Observe tasks and own submissions
+     */
+    private fun observeTasksAndSubmissions(gameId: String, teamId: String) {
+        tasksListener?.remove()
+        submissionsListener?.remove()
+
+        // Listen to tasks
+        tasksListener = db.collection("games")
+            .document(gameId)
+            .collection("tasks")
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    _state.update { it.copy(loading = false, error = error.message) }
+                    return@addSnapshotListener
+                }
+
+                val tasks = snapshot?.documents?.mapNotNull { doc ->
+                    doc.toObject(Task::class.java)?.copy(id = doc.id)
+                } ?: emptyList()
+
+                updateTasksWithStatus(gameId, teamId, tasks)
+            }
+
+        submissionsListener = db.collection("games")
+            .document(gameId)
+            .collection("teams")
+            .document(teamId)
+            .collection("submissions")
+            .addSnapshotListener { _, _ ->
+                // Refetch task statuses when submissions change
+                viewModelScope.launch {
+                    val tasksSnap = db.collection("games")
+                        .document(gameId)
+                        .collection("tasks")
+                        .get()
+                        .await()
+
+                    val tasks = tasksSnap.documents.mapNotNull { doc ->
+                        doc.toObject(Task::class.java)?.copy(id = doc.id)
+                    }
+
+                    updateTasksWithStatus(gameId, teamId, tasks)
+                }
+            }
+    }
+
+    private fun updateTasksWithStatus(gameId: String, teamId: String, tasks: List<Task>) {
+        viewModelScope.launch {
+            try {
+                val submissionsSnap = db.collection("games")
+                    .document(gameId)
+                    .collection("teams")
+                    .document(teamId)
+                    .collection("submissions")
+                    .get()
+                    .await()
+
+                val submissions = submissionsSnap.documents.mapNotNull { doc ->
+                    doc.toObject(Submission::class.java)
+                }
+
+                // Map taskId to submission status
+                val taskStatusMap = submissions.associate { it.taskId to it.status }
+
+                val taskUiList = tasks.map { task ->
+                    val status = taskStatusMap[task.id]
+                    TaskUi(
+                        id = task.id,
+                        name = task.name,
+                        description = task.description,
+                        points = task.points,
+                        type = task.type,
+                        isCompleted = status == "approved",
+                        isPending = status == "pending"
+                    )
+                }
+
+                _state.update {
+                    it.copy(
+                        loading = false,
+                        tasks = taskUiList,
+                        completedCount = taskUiList.count { t -> t.isCompleted }
+                    )
+                }
+
+            } catch (e: Exception) {
+                _state.update { it.copy(loading = false, error = e.message) }
+            }
+        }
+    }
+
+    /**
+     * Player
+     * Submits text answer
+     */
+    fun submitTextAnswer(taskId: String, answer: String) {
+        val gameId = _state.value.gameId ?: return
+        val teamId = _state.value.teamId ?: return
+        val uid = auth.currentUser?.uid ?: return
+
+        viewModelScope.launch {
+            try {
+                val submission = hashMapOf(
+                    "taskId" to taskId,
+                    "userId" to uid,
+                    "type" to "text",
+                    "status" to "pending",
+                    "text" to answer.trim(),
+                    "createdAt" to Timestamp.now(),
+                    "scoreAwarded" to 0
+                )
+
+                db.collection("games")
+                    .document(gameId)
+                    .collection("teams")
+                    .document(teamId)
+                    .collection("submissions")
+                    .add(submission)
+                    .await()
+
+            } catch (e: Exception) {
+                _state.update { it.copy(error = "Failed to submit: ${e.message}") }
+            }
+        }
+    }
+
+    /**
+     * Host; Observe all submissions
+     */
+    private fun observeAllSubmissions(gameId: String) {
+
+        viewModelScope.launch {
+            try {
+
+                val teamsSnap = db.collection("games")
+                    .document(gameId)
+                    .collection("teams")
+                    .get()
+                    .await()
+
+                val teams = teamsSnap.documents.mapNotNull { doc ->
+                    doc.toObject(Team::class.java)?.copy(id = doc.id)
+                }
+
+                val tasksSnap = db.collection("games")
+                    .document(gameId)
+                    .collection("tasks")
+                    .get()
+                    .await()
+
+                val taskMap = tasksSnap.documents.associate { doc ->
+                    doc.id to (doc.toObject(Task::class.java)?.name ?: "Unknown Task")
+                }
+
+                // Listen to each team's submissions
+                for (team in teams) {
+                    val listener = db.collection("games")
+                        .document(gameId)
+                        .collection("teams")
+                        .document(team.id)
+                        .collection("submissions")
+                        .whereEqualTo("status", "pending")
+                        .addSnapshotListener { _, error ->
+                            if (error != null) return@addSnapshotListener
+
+                            viewModelScope.launch {
+                                refreshAllPendingSubmissions(gameId, teams, taskMap)
+                            }
+                        }
+
+                    hostSubmissionsListeners.add(listener)
+                }
+
+                refreshAllPendingSubmissions(gameId, teams, taskMap)
+
+            } catch (e: Exception) {
+                _state.update { it.copy(loading = false, error = e.message) }
+            }
+        }
+    }
+
+    /**
+     * Loads ALL pending submissions across ALL teams
+     * Builds the UI list the host sees in the review screen
+     */
+    private suspend fun refreshAllPendingSubmissions(
+        gameId: String,
+        teams: List<Team>,
+        taskMap: Map<String, String>
+    ) {
+        val allSubmissions = mutableListOf<SubmissionUi>()
+
+        for (team in teams) {
+            val subsSnap = db.collection("games")
+                .document(gameId)
+                .collection("teams")
+                .document(team.id)
+                .collection("submissions")
+                .whereEqualTo("status", "pending")
+                .get()
+                .await()
+
+
+            for (doc in subsSnap.documents) {
+                val sub = doc.toObject(Submission::class.java)?.copy(id = doc.id) ?: continue
+
+                val userDoc = db.collection("users").document(sub.userId).get().await()
+                val submitterName = userDoc.getString("displayName")
+                    ?: userDoc.getString("email")
+                    ?: "Unknown"
+
+                allSubmissions.add(
+                    SubmissionUi(
+                        id = sub.id,
+                        taskId = sub.taskId,
+                        taskName = taskMap[sub.taskId] ?:"Unknown Task",
+                        teamId = team.id,
+                        teamName = team.name,
+                        submitterId = sub.userId,
+                        submitterName = submitterName,
+                        type = sub.type,
+                        textAnswer = sub.text,
+                        status = sub.status
+                    )
+                )
+            }
+        }
+
+        _state.update {
+            it.copy(
+                loading = false,
+                pendingSubmissions = allSubmissions
+            )
+        }
+    }
+
+    /**
+     * Host: Approve/Reject
+     */
+    fun approveSubmission(submission: SubmissionUi) {
+        val gameId = _state.value.gameId ?: return
+        val uid = auth.currentUser?.uid ?: return
+
+        viewModelScope.launch {
+            try {
+                // Get task points
+                val taskDoc = db.collection("games")
+                    .document(gameId)
+                    .collection("tasks")
+                    .document(submission.taskId)
+                    .get()
+                    .await()
+
+                val points = taskDoc.getLong("points")?.toInt() ?: 0
+
+
+                // Update submission
+                db.collection("games")
+                    .document(gameId)
+                    .collection("teams")
+                    .document(submission.teamId)
+                    .collection("submissions")
+                    .document(submission.id)
+                    .update(
+                        mapOf(
+                            "status" to "approved",
+                            "verifiedBy" to uid,
+                            "verifiedAt" to Timestamp.now(),
+                            "scoreAwarded" to points
+                        )
+                    )
+                    .await()
+
+            } catch (e: Exception) {
+                _state.update { it.copy(error = e.message) }
+            }
+        }
+    }
+
+    fun rejectSubmission(submission: SubmissionUi) {
+        val gameId = _state.value.gameId ?: return
+        val uid = auth.currentUser?.uid ?: return
+
+        viewModelScope.launch {
+            try {
+                db.collection("games")
+                    .document(gameId)
+                    .collection("teams")
+                    .document(submission.teamId)
+                    .collection("submissions")
+                    .document(submission.id)
+                    .update(
+                        mapOf(
+                            "status" to "rejected",
+                            "verifiedBy" to uid,
+                            "verifiedAt" to Timestamp.now()
+                        )
+                    )
+                    .await()
+
+            } catch (e: Exception) {
+                _state.update { it.copy(error = e.message) }
+            }
+        }
+    }
+
+    // Cleanup
+    override fun onCleared() {
+        super.onCleared()
+        gameListener?.remove()
+        tasksListener?.remove()
+        submissionsListener?.remove()
+        hostSubmissionsListeners.forEach { it.remove() }
+    }
+}
