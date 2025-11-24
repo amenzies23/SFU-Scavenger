@@ -212,7 +212,9 @@ private fun CreateTab(navController: NavController,
                     game = game,
                     onLaunchClick = {
                         Log.d("MyGamesRow", "Launch clicked for game: ${game.name}")
+                        vm.publishGame(game.id)
                         navController.navigate("lobby/${game.id}")
+
                     },
                     onEditClick = {
                         Log.d("MyGamesRow", "Edit clicked for game: ${game.name}")
@@ -407,7 +409,6 @@ fun JoinByCodeRow(
     onInvalidCode: () -> Unit
 ) {
     var code by remember { mutableStateOf("") }
-//    val privateGames by vm.privateGames.collectAsState()
 
     Row(
         modifier = Modifier

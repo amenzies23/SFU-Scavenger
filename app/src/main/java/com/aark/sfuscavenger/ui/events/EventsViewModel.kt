@@ -4,6 +4,7 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.aark.sfuscavenger.data.models.Game
 import com.aark.sfuscavenger.repositories.GameRepository
 import com.google.firebase.auth.FirebaseAuth
@@ -100,6 +101,17 @@ class EventsViewModel(
                 gameRepo.deleteGame(gameId)
             } catch (t: Throwable) {
                 _error.value = t.message ?: "Failed to delete game"
+            }
+        }
+    }
+
+    fun publishGame(gameId: String) {
+        viewModelScope.launch {
+            _error.value = null
+            try {
+                gameRepo.publishGame(gameId, "live")
+            } catch (e: Exception) {
+                _error.value = e.message ?: "Failed to launch game"
             }
         }
     }

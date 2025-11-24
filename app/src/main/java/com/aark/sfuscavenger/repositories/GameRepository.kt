@@ -191,4 +191,14 @@ class GameRepository(
         }
     }
 
+    suspend fun publishGame(gameId: String, status: String) {
+        gamesCollection.document(gameId)
+            .update(
+                mapOf(
+                    "status" to status,
+                    "updatedAt" to Timestamp.now()
+                )
+            ).await()
+    }
+
 }

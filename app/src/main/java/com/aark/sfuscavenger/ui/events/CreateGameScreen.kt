@@ -285,8 +285,6 @@ private fun TasksTab(navController: NavController,
 ) {
     val tasks = vm.tasks.collectAsState()
     val game = vm.game.collectAsState()
-//    var showAddTaskDialog by remember { mutableStateOf(false) }
-//    var taskToEdit by remember { mutableStateOf<Task?>(null) }
 
     // Show message if game isn't saved yet
     if (game.value.id.isBlank()) {
@@ -458,21 +456,6 @@ private fun TaskCard(
                     singleLine = true
                 )
 
-                // Type selector - simplified for now
-//                TextField(
-//                    value = type,
-//                    onValueChange = { type = it },
-//                    label = { Text("Type", color = Maroon, fontWeight = Bold) },
-//                    modifier = Modifier.weight(1f),
-//                    shape = RoundedCornerShape(8.dp),
-//                    colors = TextFieldDefaults.colors(
-//                        focusedIndicatorColor = Color.Transparent,
-//                        unfocusedIndicatorColor = Color.Transparent,
-//                        focusedContainerColor = White,
-//                        unfocusedContainerColor = White,
-//                    ),
-//                    singleLine = true
-//                )
                 var expanded by remember { mutableStateOf(false) }
                 val taskTypes = listOf("text", "photo", "qr", "geo")
 
