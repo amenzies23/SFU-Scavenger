@@ -27,17 +27,21 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.TextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -86,6 +90,13 @@ fun ProfileScreen(
         ProfileInformation(profileState)
         FriendsList(
             friends = profileState.friends,
+            addFriendError = profileState.addFriendError,
+            onAddFriendByUsername = { username ->
+                viewModel.addFriendByUsername(username)
+            },
+            onClearError = {
+                viewModel.clearAddFriendError()
+            },
             modifier = Modifier
                 .fillMaxWidth()
                 .weight(1f, fill = true)
@@ -402,20 +413,64 @@ fun ProfileSettingsDialog(
 @Composable
 fun FriendsList(
     friends: List<Friend>,
+    addFriendError: String? = null,
+    onAddFriendByUsername: (String) -> Unit = {},
+    onClearError: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
+    var showAddFriendDialog by remember { mutableStateOf(false) }
+    var usernameInput by remember { mutableStateOf("") }
+    var isAddingFriend by remember { mutableStateOf(false) }
+    
+    // Clear error when dialog is opened
+    LaunchedEffect(showAddFriendDialog) {
+        if (showAddFriendDialog) {
+            onClearError()
+            usernameInput = ""
+            isAddingFriend = false
+        }
+    }
+    
+    // Close dialog when friend is successfully added (no error after attempting to add)
+    LaunchedEffect(addFriendError) {
+        if (isAddingFriend && addFriendError == null) {
+            // Friend was successfully added, close dialog and clear input
+            usernameInput = ""
+            showAddFriendDialog = false
+            isAddingFriend = false
+        }
+    }
+    
     Column(
         modifier = modifier
             .padding(horizontal = 16.dp)
             .padding(bottom = 16.dp)
     ) {
-        Text(
-            text = "Friends",
-            fontSize = 22.sp,
-            fontWeight = FontWeight.Bold,
-            color = Color.Black,
-            modifier = Modifier.padding(bottom = 12.dp)
-        )
+        // Friends header with + button
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 12.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "Friends",
+                fontSize = 22.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color.Black
+            )
+            
+            IconButton(
+                onClick = { showAddFriendDialog = true }
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Add,
+                    contentDescription = "Add Friend",
+                    tint = Maroon
+                )
+            }
+        }
 
         if (friends.isEmpty()) {
             Text(
@@ -434,6 +489,143 @@ fun FriendsList(
             }
         }
     }
+    
+    // Dialog to add friend by username
+    if (showAddFriendDialog) {
+        AddFriendDialogContent(
+            usernameInput = usernameInput,
+            addFriendError = addFriendError,
+            isAddingFriend = isAddingFriend,
+            onUsernameInputChange = { usernameInput = it },
+            onAddFriend = {
+                if (usernameInput.isNotBlank()) {
+                    isAddingFriend = true
+                    onAddFriendByUsername(usernameInput.trim())
+                }
+            },
+            onDismiss = {
+                showAddFriendDialog = false
+                usernameInput = ""
+            },
+            onClearError = onClearError
+        )
+    }
+}
+
+@Composable
+private fun AddFriendDialogContent(
+    usernameInput: String,
+    addFriendError: String?,
+    isAddingFriend: Boolean,
+    onUsernameInputChange: (String) -> Unit,
+    onAddFriend: () -> Unit,
+    onDismiss: () -> Unit,
+    onClearError: () -> Unit
+) {
+    AlertDialog(
+            onDismissRequest = onDismiss,
+            title = { 
+                Text(
+                    "Add Friend by Username",
+                    fontWeight = FontWeight.Bold,
+                    color = Color.Black
+                ) 
+            },
+            text = {
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    // Text field with red outline and beige background
+                    TextField(
+                        value = usernameInput,
+                        onValueChange = { 
+                            onUsernameInputChange(it)
+                            // Clear error when user starts typing
+                            if (addFriendError != null) {
+                                onClearError()
+                            }
+                        },
+                        label = { 
+                            Text(
+                                "Username",
+                                color = if (addFriendError != null) AppColors.Red else Maroon,
+                                fontWeight = FontWeight.SemiBold
+                            ) 
+                        },
+                        placeholder = { 
+                            Text(
+                                "Enter username",
+                                color = Color.Gray
+                            ) 
+                        },
+                        singleLine = true,
+                        isError = addFriendError != null,
+                        shape = RoundedCornerShape(4.dp),
+                        colors = androidx.compose.material3.TextFieldDefaults.colors(
+                            focusedContainerColor = Color(0xFFFEFAF4),
+                            unfocusedContainerColor = Color(0xFFFEFAF4),
+                            disabledContainerColor = Color(0xFFFEFAF4),
+                            errorContainerColor = Color(0xFFFEFAF4),
+                            focusedIndicatorColor = Color.Transparent,
+                            unfocusedIndicatorColor = Color.Transparent,
+                            disabledIndicatorColor = Color.Transparent,
+                            errorIndicatorColor = Color.Transparent,
+                            focusedLabelColor = Maroon,
+                            unfocusedLabelColor = Maroon,
+                            errorLabelColor = AppColors.Red,
+                            focusedTextColor = Color.Black,
+                            unfocusedTextColor = Color.Black,
+                            errorTextColor = Color.Black,
+                            cursorColor = Maroon
+                        ),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .border(
+                                width = 1.dp,
+                                color = if (addFriendError != null) AppColors.Red else Maroon,
+                                shape = RoundedCornerShape(4.dp)
+                            )
+                    )
+                    // Show error message if there is one
+                    if (addFriendError != null) {
+                        Text(
+                            text = addFriendError,
+                            color = AppColors.Red,
+                            fontSize = 12.sp,
+                            modifier = Modifier.padding(start = 16.dp, top = 4.dp)
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = onAddFriend,
+                    enabled = usernameInput.isNotBlank() && !isAddingFriend,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Maroon,
+                        contentColor = White
+                    ),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    if (isAddingFriend) {
+                        Text("Adding")
+                    } else { 
+                        Text("Add Friend")
+                    }
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = onDismiss,
+                    colors = ButtonDefaults.textButtonColors(contentColor = Maroon),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("Cancel")
+                }
+            },
+            containerColor = Color(0xFFFEFAF4),
+            shape = RoundedCornerShape(28.dp)
+        )
 }
 
 @Composable
