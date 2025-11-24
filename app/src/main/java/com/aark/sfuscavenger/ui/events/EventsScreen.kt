@@ -220,7 +220,7 @@ private fun CreateTab(navController: NavController,
                     },
                     onDeleteClick = {
                         Log.d("MyGamesRow", "Delete clicked for game: ${game.name}")
-//                        vm.deleteGame(game.id)
+                        vm.deleteGame(game.id)
                     }
                 )
             }
