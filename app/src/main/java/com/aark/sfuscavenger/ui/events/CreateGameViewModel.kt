@@ -3,20 +3,27 @@ package com.aark.sfuscavenger.ui.events
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.aark.sfuscavenger.data.models.Game
+import com.aark.sfuscavenger.data.models.Task
 import com.aark.sfuscavenger.repositories.GameRepository
+import com.aark.sfuscavenger.repositories.TaskRepository
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.GeoPoint
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.launch
 
 class CreateGameViewModel(
     private val gameRepo: GameRepository = GameRepository(),
+    private val taskRepo: TaskRepository = TaskRepository(),
     private val auth: FirebaseAuth = FirebaseAuth.getInstance()
 ) : ViewModel() {
 
     private val _game = MutableStateFlow(Game())
     val game: MutableStateFlow<Game> = _game
+
+    private val _tasks = MutableStateFlow<List<Task>>(emptyList())
+    val tasks: StateFlow<List<Task>> = _tasks
 
     private val _loading = MutableStateFlow(false)
     val loading: StateFlow<Boolean> = _loading
@@ -38,6 +45,8 @@ class CreateGameViewModel(
                 if (existingGame != null) {
                     _game.value = existingGame
                     isEditMode = true
+
+                    observeTasks(gameId)
                 } else {
                     _error.value = "Game not found"
                 }
@@ -102,6 +111,52 @@ class CreateGameViewModel(
                 _error.value = e.message ?: "Failed to create game"
             } finally {
                 _loading.value = false
+            }
+        }
+    }
+
+    private fun observeTasks(gameId: String) {
+        viewModelScope.launch {
+            taskRepo.observeTasks(gameId)
+                .catch { e -> _error.value = e.message }
+                .collect { taskList -> _tasks.value = taskList }
+        }
+    }
+
+    fun addTask(task: Task) {
+        viewModelScope.launch {
+            _error.value = null
+            try {
+                val gameId = _game.value.id
+                if (gameId.isBlank()) {
+                    _error.value = "Save the game first before adding tasks"
+                    return@launch
+                }
+                taskRepo.createTask(gameId, task)
+            } catch (e: Exception) {
+                _error.value = e.message ?: "Failed to add task"
+            }
+        }
+    }
+
+    fun updateTask(task: Task) {
+        viewModelScope.launch {
+            _error.value = null
+            try {
+                taskRepo.updateTask(_game.value.id, task)
+            } catch (e: Exception) {
+                _error.value = e.message ?: "Failed to update task"
+            }
+        }
+    }
+
+    fun deleteTask(taskId: String) {
+        viewModelScope.launch {
+            _error.value = null
+            try {
+                taskRepo.deleteTask(_game.value.id, taskId)
+            } catch (e: Exception) {
+                _error.value = e.message ?: "Failed to delete task"
             }
         }
     }
