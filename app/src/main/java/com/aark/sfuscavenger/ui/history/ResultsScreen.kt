@@ -30,8 +30,11 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import com.aark.sfuscavenger.data.models.User
 import com.aark.sfuscavenger.repositories.GameRepository
 import com.aark.sfuscavenger.repositories.TeamRepository
+import com.aark.sfuscavenger.repositories.UserRepository
+import com.google.firebase.auth.FirebaseAuth
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
@@ -49,16 +52,20 @@ fun ResultsScreen(
 ) {
     val gameRepository = remember { GameRepository() }
     val teamRepository = remember { TeamRepository() }
+    val userRepository = remember { UserRepository() }
+    val auth = remember { FirebaseAuth.getInstance() }
     
     var gameName by remember { mutableStateOf<String?>(null) }
     var placement by remember { mutableStateOf<String?>(null) }
     var score by remember { mutableStateOf<Int?>(null) }
+    var teamMembers by remember { mutableStateOf<List<User>>(emptyList()) }
     
     LaunchedEffect(gameId, teamId) {
         val game = gameRepository.getGame(gameId)
         gameName = game?.name?.ifBlank { "Untitled Game" }
         
         if (teamId != null && teamId != "none") {
+            // Get team summary for placement and score
             val teamSummary = teamRepository.getTeamSummary(gameId, teamId)
             val placementInt = teamSummary?.placement ?: 0
             placement = if (placementInt > 0) {
@@ -72,9 +79,21 @@ fun ResultsScreen(
                 "N/A"
             }
             score = teamSummary?.score
+            
+            // Get all team members
+            val membersMap = teamRepository.getTeamMembersWithUserObject(gameId, teamId)
+            teamMembers = membersMap.values.toList()
         } else {
+            // No team - just show the current user
             placement = "N/A"
             score = null
+            val currentUserId = auth.currentUser?.uid
+            if (currentUserId != null) {
+                val currentUser = userRepository.fetchUserById(currentUserId)
+                teamMembers = if (currentUser != null) listOf(currentUser) else emptyList()
+            } else {
+                teamMembers = emptyList()
+            }
         }
     }
     
@@ -118,13 +137,23 @@ fun ResultsScreen(
                 }
             }
 
-            item { SectionTitle("Team members") }
+            item { SectionTitle(if (teamId != null && teamId != "none") "Team members" else "Player") }
             item {
                 InfoCard {
-                    Text(
-                        text = "Team details will appear here once implemented.",
-                        style = MaterialTheme.typography.bodyMedium
-                    )
+                    if (teamMembers.isEmpty()) {
+                        Text(
+                            text = "No members found",
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                    } else {
+                        Column(
+                            verticalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            teamMembers.forEach { user ->
+                                TeamMemberRow(user = user)
+                            }
+                        }
+                    }
                 }
             }
 
@@ -215,6 +244,34 @@ private fun SectionTitle(text: String) {
         fontWeight = FontWeight.SemiBold,
         color = Maroon
     )
+}
+
+@Composable
+private fun TeamMemberRow(user: User) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = user.displayName ?: user.email,
+                style = MaterialTheme.typography.bodyLarge,
+                fontWeight = FontWeight.SemiBold
+            )
+            if (user.username != null) {
+                Text(
+                    text = "@${user.username}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Color.Gray
+                )
+            }
+        }
+        Text(
+            text = "Level ${user.level}",
+            style = MaterialTheme.typography.bodyMedium,
+            color = Maroon
+        )
+    }
 }
 
 

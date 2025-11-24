@@ -15,7 +15,8 @@ import kotlinx.coroutines.launch
 data class HistoryUiState(
     val loading: Boolean = true,
     val error: String? = null,
-    val cards: List<HistoryCard> = emptyList()
+    val cards: List<HistoryCard> = emptyList(),
+    val searchQuery: String = ""
 )
 
 data class HistoryCard(
@@ -34,6 +35,27 @@ class HistoryViewModel(
 
     private val _uiState = MutableStateFlow(HistoryUiState())
     val uiState: StateFlow<HistoryUiState> = _uiState
+    
+    /**
+     * get the filtered name of the game when searched
+     */
+    val filteredCards: List<HistoryCard>
+        get() {
+            val query = _uiState.value.searchQuery.trim()
+            if (query.isEmpty()) {
+                return _uiState.value.cards
+            }
+            return _uiState.value.cards.filter { card ->
+                card.title.contains(query, ignoreCase = true)
+            }
+        }
+    
+    /**
+     * Updates the search query to filter history cards.
+     */
+    fun setSearchQuery(query: String) {
+        _uiState.update { it.copy(searchQuery = query) }
+    }
 
 // For testing purposes, use this to look like what it'll look like in history!
 //    private val placeholderCards = listOf(
@@ -55,12 +77,44 @@ class HistoryViewModel(
             _uiState.update { it.copy(loading = true, error = null) }
             
             runCatching {
-                val endedGames = gameRepository.getEndedGamesForCurrentUser()
+                // STEP 1: Get all memberships - ensures user is a member
                 val allMemberships = userRepository.getMembershipsForUser()
+                
+                if (allMemberships.isEmpty()) {
+                    _uiState.value = HistoryUiState(
+                        loading = false,
+                        error = null,
+                        cards = emptyList()
+                    )
+                    return@launch
+                }
+                
+                // STEP 2: Get game IDs from memberships (only games user is a member of)
+                val gameIds = allMemberships.map { it.gameId }
+                
+                // STEP 3: Get all games that the user is a member of
+                val allGames = gameRepository.getGamesByIds(gameIds)
+                
+                // STEP 4: Filter to ONLY ended games AND verify membership exists
                 val membershipByGameId = allMemberships.associateBy { it.gameId }
                 
-                val historyCards = endedGames.mapNotNull { game ->
-                    createHistoryCard(game, membershipByGameId[game.id])
+                // Create history cards only for games that meet BOTH conditions:
+                // 1. User is a member (has membership document)
+                // 2. Game status is "ended"
+                val historyCards = allGames.mapNotNull { game ->
+                    // Check condition 1: User must be a member
+                    val membership = membershipByGameId[game.id]
+                    if (membership == null) {
+                        return@mapNotNull null // Skip games without membership
+                    }
+                    
+                    // Check condition 2: Game must be ended
+                    if (game.status != "ended") {
+                        return@mapNotNull null // Skip games that are not ended
+                    }
+                    
+                    // Both conditions met - create history card
+                    createHistoryCard(game, membership)
                 }
                 
                 historyCards.sortedByDescending { it.joinedAt }
