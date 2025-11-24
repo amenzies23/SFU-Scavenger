@@ -73,7 +73,12 @@ fun LobbyScreen(
                     .padding(horizontal = 16.dp, vertical = 12.dp)
             ) {
 
-                LobbyTopBar(isHost = state.isHost)
+                LobbyTopBar(
+                    isHost = state.isHost,
+                    gameName = state.gameName,
+                    joinCode = state.joinCode
+                )
+
 
                 Spacer(modifier = Modifier.height(8.dp))
 
@@ -121,7 +126,11 @@ fun LobbyScreen(
 }
 
 @Composable
-private fun LobbyTopBar(isHost: Boolean) {
+private fun LobbyTopBar(
+    isHost: Boolean,
+    gameName: String,
+    joinCode: String
+) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -138,20 +147,31 @@ private fun LobbyTopBar(isHost: Boolean) {
             )
 
             Text(
-                text = if (isHost) "You are the host" else "Waiting for host to start...",
-                fontSize = 14.sp,
-                fontWeight = FontWeight.Medium,
-                color = Color(0xFFA46A4B)
+                text = gameName,
+                fontSize = 20.sp,
+                fontWeight = FontWeight.Bold,
+                color = Black
             )
-        }
 
-        Icon(
-            imageVector = Icons.Default.Search,
-            contentDescription = "Search",
-            tint = Black
-        )
+            if (isHost && joinCode.isNotBlank()) {
+                Text(
+                    text = "Join Code: $joinCode",
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Medium,
+                    color = Color(0xFFA46A4B)
+                )
+            } else if (!isHost) {
+                Text(
+                    text = "Waiting for host to start...",
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Medium,
+                    color = Color(0xFFA46A4B)
+                )
+            }
+        }
     }
 }
+
 
 @Composable
 private fun LobbyContent(
