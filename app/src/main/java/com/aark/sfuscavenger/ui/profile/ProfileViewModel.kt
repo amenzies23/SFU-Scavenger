@@ -28,12 +28,17 @@ data class ProfileState(
     val username: String = "",
     val userLevel: Int = 0,
     val totalXP: Int = 0, // total XP for each specific level
-    val friends: List<Friend> = emptyList()
+    val friends: List<Friend> = emptyList(),
+    val addFriendError: String? = null 
 )
 
 class ProfileViewModel(
     private val repository: UserRepository = UserRepository()
 ) : ViewModel() {
+
+    companion object {
+        private const val TAG = "ProfileViewModel"
+    }
 
     private val _state = MutableStateFlow(ProfileState())
     val state: StateFlow<ProfileState> = _state.asStateFlow()
@@ -42,6 +47,9 @@ class ProfileViewModel(
         refreshProfile()
     }
 
+    /**
+     * shows users that are in (users/{userId}/friends/{friendId}).
+     */
     fun refreshProfile() = launchScoped {
         val user = repository.fetchUser()
         val friends = repository.fetchFriends()
@@ -89,6 +97,62 @@ class ProfileViewModel(
         }
     }
 
+    /**
+     * Adds a friend by their username.
+     * After adding, refreshes the profile to show the new friend.
+     * 
+     * @param username The username of the person to add as a friend
+     */
+    fun addFriendByUsername(username: String) = launchScoped {
+        // Clear any previous error messages
+        _state.update { it.copy(addFriendError = null) }
+        
+        try {
+            // Try to add the friend by username
+            repository.addFriendByUsername(username)
+            
+            // If successful, refresh the profile to show the new friend
+            refreshProfile()
+            Log.d(TAG, "Successfully added friend by username: $username")
+            
+        } catch (e: IllegalArgumentException) {
+            // Handle specific error cases
+            Log.e(TAG, "Error adding friend by username: ${e.message}", e)
+            
+            val errorMessage = when {
+                // Username doesn't exist in the database
+                e.message?.contains("not found") == true -> {
+                    "User with username '$username' not found"
+                }
+                // User tried to add themselves as a friend
+                e.message?.contains("yourself") == true -> {
+                    "You cannot add yourself as a friend :["
+                }
+                // Any other IllegalArgumentException - use the original message
+                else -> {
+                    e.message ?: "Failed to add friend"
+                }
+            }
+            
+            // Update state with the error message so UI can display it
+            _state.update { it.copy(addFriendError = errorMessage) }
+            
+        } catch (e: Exception) {
+            // Handle any other unexpected errors
+            Log.e(TAG, "Unexpected error adding friend by username: ${e.message}", e)
+            _state.update { 
+                it.copy(addFriendError = "Failed to add friend. Please try again.")
+            }
+        }
+    }
+
+    /**
+     * Clears the add friend error message.
+     */
+    fun clearAddFriendError() {
+        _state.update { it.copy(addFriendError = null) }
+    }
+
     private fun launchScoped(block: suspend () -> Unit) {
         viewModelScope.launch {
             runCatching { block() }
@@ -96,7 +160,4 @@ class ProfileViewModel(
         }
     }
 
-    companion object {
-        private const val TAG = "ProfileViewModel"
-    }
 }
