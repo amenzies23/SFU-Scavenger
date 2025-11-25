@@ -144,10 +144,20 @@ class UserRepository(
     suspend fun updatePhotoUrl(url: String?) =
         updateUserFields(mapOf("photoUrl" to url))
 
+    /**
+     * Uploads a profile image to Firebase Storage cloud bucket.
+     * Storage path: profilePhotos/{userId}/{uuid}.jpg
+     * Cloud bucket: sfu-scavenger-610ec.firebasestorage.app
+     */
     suspend fun uploadProfileImage(imageUri: Uri): String {
         val path = "profilePhotos/${currentUid()}/${UUID.randomUUID()}.jpg"
         val ref = storage.reference.child(path)
-        ref.putFile(imageUri).await()
+        
+        val metadata = com.google.firebase.storage.StorageMetadata.Builder()
+            .setContentType("image/jpeg")
+            .build()
+        
+        ref.putFile(imageUri, metadata).await()
         return ref.downloadUrl.await().toString()
     }
 
