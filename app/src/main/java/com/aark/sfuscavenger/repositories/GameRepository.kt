@@ -178,9 +178,20 @@ class GameRepository(
 
         val gameIds = membershipsSnap.documents.map { it.id }
 
+        // Get all games the user is a member of, then filter to only ended games
+        val allGames = getGamesByIds(gameIds)
+        return allGames.filter { it.status == "ended" }
+    }
+
+    /**
+     * Returns all games from the provided list of game IDs.
+     * Returns all games that exist, regardless of status.
+     */
+    suspend fun getGamesByIds(gameIds: List<String>): List<Game> {
+        if (gameIds.isEmpty()) return emptyList()
+
         val snapshot = gamesCollection
             .whereIn(FieldPath.documentId(), gameIds)
-            .whereEqualTo("status", "ended")
             .get()
             .await()
 
