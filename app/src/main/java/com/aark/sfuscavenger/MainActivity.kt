@@ -76,6 +76,9 @@ fun SFUScavengerApp() {
         currentRoute?.startsWith("createGame") == true -> {
             if (currentRoute.contains("gameId=")) "Edit Game" else "Create Game"
         }
+        currentRoute?.startsWith("results/") == true -> {
+            "Game Results"
+        }
         else -> null
     }
 

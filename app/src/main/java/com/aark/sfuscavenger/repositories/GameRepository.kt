@@ -188,14 +188,18 @@ class GameRepository(
      * Returns all games that exist, regardless of status.
      */
     suspend fun getGamesByIds(gameIds: List<String>): List<Game> {
-        if (gameIds.isEmpty()) return emptyList()
+        if (gameIds.isEmpty()) {
+            return emptyList()
+        }
 
         val snapshot = gamesCollection
             .whereIn(FieldPath.documentId(), gameIds)
             .get()
             .await()
 
-        if (snapshot.isEmpty) return emptyList()
+        if (snapshot.isEmpty) {
+            return emptyList()
+        }
 
         return snapshot.documents.mapNotNull { doc ->
             doc.toObject(Game::class.java)?.copy(id = doc.id)

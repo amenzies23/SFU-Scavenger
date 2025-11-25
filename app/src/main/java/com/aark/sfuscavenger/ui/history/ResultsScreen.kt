@@ -14,12 +14,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -109,18 +105,10 @@ fun ResultsScreen(
     ) {
         LazyColumn(
             modifier = Modifier
-                .fillMaxSize()
-                .padding(top = 24.dp),
+                .fillMaxSize(),
             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            item {
-                ResultsTopBar(
-                    title = gameName ?: "Game summary",
-                    onBack = { navController.popBackStack() }
-                )
-            }
-
             item {
                 InfoCard {
                     Text(
@@ -191,30 +179,6 @@ fun ResultsScreen(
                 }
             }
         }
-    }
-}
-
-@Composable
-private fun ResultsTopBar(
-    title: String,
-    onBack: () -> Unit
-) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        IconButton(onClick = onBack) {
-            Icon(
-                imageVector = Icons.Default.ArrowBack,
-                contentDescription = "Back"
-            )
-        }
-        Text(
-            text = title,
-            style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier.padding(start = 8.dp)
-        )
     }
 }
 
