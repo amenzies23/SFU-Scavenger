@@ -25,7 +25,8 @@ data class TaskUi(
     val points: Int,
     val type: String,
     val isCompleted: Boolean = false,
-    val isPending: Boolean = false
+    val isPending: Boolean = false,
+    val isRejected: Boolean = false
 )
 
 data class SubmissionUi(
@@ -209,7 +210,8 @@ class TaskViewModel(
                         points = task.points,
                         type = task.type,
                         isCompleted = status == "approved",
-                        isPending = status == "pending"
+                        isPending = status == "pending",
+                        isRejected = status == "rejected"
                     )
                 }
 

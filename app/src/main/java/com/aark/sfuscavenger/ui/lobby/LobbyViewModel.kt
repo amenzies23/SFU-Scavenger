@@ -34,8 +34,10 @@ data class LobbyUiState(
     val isHost: Boolean = false,
     val currentUserTeamId: String? = null,
 
+    val joinCode: String = "",
     val teams: List<LobbyTeamUi> = emptyList()
 )
+
 
 class LobbyViewModel(
     private val db: FirebaseFirestore = FirebaseFirestore.getInstance(),
@@ -92,7 +94,9 @@ class LobbyViewModel(
                         error = null,
                         gameName = game?.name.orEmpty(),
                         gameStatus = game?.status ?: "draft",
-                        isHost = uid != null && uid == game?.ownerId
+                        isHost = uid != null && uid == game?.ownerId,
+                        joinCode = game?.joinCode ?: ""
+
                     )
                 }
             }
