@@ -20,7 +20,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.AlertDialogDefaults
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
@@ -47,7 +46,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -264,6 +262,7 @@ fun ProfileSettingsDialog(
     var removePhoto by rememberSaveable(currentState.profilePicture) {
         mutableStateOf(false)
     }
+    
     val imagePickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
     ) { uri ->
@@ -272,20 +271,26 @@ fun ProfileSettingsDialog(
             removePhoto = false
         }
     }
-    val previewImage = localImageUri?.toString()
-        ?: if (!removePhoto) currentState.profilePicture else null
+    val previewImage = when {
+        localImageUri != null -> localImageUri.toString()
+        removePhoto -> null
+        else -> currentState.profilePicture
+    }
 
     AlertDialog(
         onDismissRequest = onDismiss,
         confirmButton = {
             Button(
                 onClick = {
+                    // Save profile (this will upload image to Firebase Storage)
                     onSave(
                         displayNameInput.trim(),
                         usernameInput.trim(),
                         localImageUri,
                         removePhoto
                     )
+                    // Dismiss dialog after save is initiated
+                    // The upload happens asynchronously in the background
                     onDismiss()
                 },
                 colors = ButtonDefaults.buttonColors(
@@ -319,8 +324,7 @@ fun ProfileSettingsDialog(
             }
         },
         title = { Text("Edit Profile") },
-        containerColor = AlertDialogDefaults.containerColor.copy(alpha = 1f)
-            .compositeOver(Color(0xFFFEFAF4)),
+        containerColor = Color(0xFFFEFAF4),
         shape = RoundedCornerShape(28.dp),
         text = {
             Column(
