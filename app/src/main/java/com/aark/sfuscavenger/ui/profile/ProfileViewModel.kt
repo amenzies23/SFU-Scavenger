@@ -65,19 +65,24 @@ class ProfileViewModel(
         }
     }
 
-    // TODO: Implement AppCheck for uploads
-    // right now we cannot save profile pictures because firebase must validate the photos that are being saved
     fun saveProfile(displayName: String, username: String, newImage: Uri?, removePhoto: Boolean) =
         launchScoped {
-            repository.updateDisplayName(displayName)
-            repository.updateUsername(username)
-            val photoUrl = resolvePhotoUrl(newImage, removePhoto)
-            _state.update {
-                it.copy(
-                    displayName = displayName,
-                    username = username,
-                    profilePicture = photoUrl
-                )
+            try {
+                repository.updateDisplayName(displayName)
+                repository.updateUsername(username)
+                val photoUrl = resolvePhotoUrl(newImage, removePhoto)
+                
+                _state.update {
+                    it.copy(
+                        displayName = displayName,
+                        username = username,
+                        profilePicture = photoUrl
+                    )
+                }
+                
+                refreshProfile()
+            } catch (e: Exception) {
+                Log.e(TAG, "Error saving profile", e)
             }
         }
 

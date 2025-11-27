@@ -28,6 +28,7 @@ fun TopBar(
     onLeaveGame: (() -> Unit)? = null,
     showSettings: Boolean = false,
     onSettingsClick: (() -> Unit)? = null,
+    searchContent: (@Composable () -> Unit)? = null,
     ) {
 //    Column {
     TopAppBar(
@@ -39,10 +40,14 @@ fun TopBar(
             actionIconContentColor = White,
         ),
         title = {
-            Text(
-                text = title,
-                color = White
-            )
+            if (searchContent != null) {
+                searchContent()
+            } else {
+                Text(
+                    text = title,
+                    color = White
+                )
+            }
         },
         actions = {
             if (showSettings && onSettingsClick != null) {

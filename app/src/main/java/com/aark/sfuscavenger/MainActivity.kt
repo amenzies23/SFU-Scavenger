@@ -34,6 +34,8 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.aark.sfuscavenger.ui.components.TopBar
 import com.aark.sfuscavenger.ui.events.CreateGameScreen
 import com.aark.sfuscavenger.ui.history.HistoryScreen
+import com.aark.sfuscavenger.ui.history.HistorySearchBar
+import com.aark.sfuscavenger.ui.history.HistoryViewModel
 import com.aark.sfuscavenger.ui.history.ResultsScreen
 
 class MainActivity : ComponentActivity() {
@@ -57,6 +59,9 @@ fun SFUScavengerApp() {
     val vm: AuthViewModel = viewModel()
     val state by vm.state.collectAsStateWithLifecycle()
     var showProfileSettings by rememberSaveable { mutableStateOf(false) }
+    
+    // Create a shared HistoryViewModel for the history screen
+    val historyViewModel: HistoryViewModel = viewModel(key = "history")
 
     // Tracking the current route to display in the TopBar component
     val navBackStackEntry by navController.currentBackStackEntryAsState()
@@ -117,7 +122,12 @@ fun SFUScavengerApp() {
                     }
                     composable("home") { HomeScreen(navController) }
                     composable("events") { EventsScreen(navController) }
-                    composable("history") { HistoryScreen(navController) }
+                    composable("history") { 
+                        HistoryScreen(
+                            navController = navController,
+                            viewModel = historyViewModel
+                        ) 
+                    }
                     composable("profile") {
                         ProfileScreen(
                             navController = navController,

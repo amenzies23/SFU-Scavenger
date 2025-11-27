@@ -20,6 +20,8 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.aark.sfuscavenger.ui.theme.Black
 import com.aark.sfuscavenger.ui.theme.Maroon
 import com.aark.sfuscavenger.ui.theme.White
+import androidx.compose.material.icons.filled.Close
+
 
 /**
  * TaskScreen handles both the player and host workflows for tasks
@@ -160,6 +162,7 @@ private fun TaskCard(
     val bgColor = when {
         task.isCompleted -> Color(0xFFE8F5E9) // Green colour for completed
         task.isPending -> Color(0xFFFFF8E1)   // Yellow colour for pending review
+        task.isRejected -> Color(0xFFFFEBEE)    // light red for rejected
         else -> Color.White
     }
 
@@ -182,17 +185,27 @@ private fun TaskCard(
                 .padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Checkmark icon if done, circle if not
+            val icon = when {
+                task.isCompleted -> Icons.Filled.CheckCircle
+                task.isRejected -> Icons.Filled.Close
+                task.isPending -> Icons.Filled.PanoramaFishEye
+                else -> Icons.Filled.PanoramaFishEye
+            }
+
+            val iconTint = when {
+                task.isCompleted -> Color(0xFF4CAF50)   // green
+                task.isRejected -> Color.Red           // red X
+                task.isPending -> Color(0xFFFFA000)    // yellow
+                else -> Color.Gray
+            }
+
             Icon(
-                imageVector = if (task.isCompleted) Icons.Filled.CheckCircle else Icons.Filled.PanoramaFishEye,
-                contentDescription = if (task.isCompleted) "Completed" else "Not completed",
-                tint = when {
-                    task.isCompleted -> Color(0xFF4CAF50)
-                    task.isPending -> Color(0xFFFFA000)
-                    else -> Color.Gray
-                },
+                imageVector = icon,
+                contentDescription = null,
+                tint = iconTint,
                 modifier = Modifier.size(28.dp)
             )
+
 
             Spacer(modifier = Modifier.width(12.dp))
 
