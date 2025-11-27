@@ -42,6 +42,7 @@ import java.text.SimpleDateFormat
 import java.util.Locale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import com.google.android.gms.maps.model.BitmapDescriptorFactory
 import androidx.compose.ui.unit.sp
 
 /**
@@ -161,13 +162,19 @@ fun MapScreen(
                 uiState.submissions.forEach { submission ->
                     val geo = submission.geo ?: return@forEach
                     val position = LatLng(geo.latitude, geo.longitude)
-
+                    val hue = when (submission.status?.lowercase()) {
+                        "approved" -> BitmapDescriptorFactory.HUE_GREEN
+                        "pending" -> BitmapDescriptorFactory.HUE_ORANGE
+                        "rejected" -> BitmapDescriptorFactory.HUE_RED
+                        else -> BitmapDescriptorFactory.HUE_BLUE // fallback
+                    }
                     key(submission.id) {
                         val markerState = rememberMarkerState(position = position)
                         Marker(
                             state = markerState,
                             title = "Task submission",
                             snippet = "Score: ${submission.scoreAwarded} pts",
+                            icon = BitmapDescriptorFactory.defaultMarker(hue),
                             onClick = {
                                 vm.onMarkerSelected(submission)
                                 true
