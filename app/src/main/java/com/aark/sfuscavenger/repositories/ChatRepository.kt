@@ -10,6 +10,7 @@ import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.tasks.await
+import com.aark.sfuscavenger.crypto.ChatCrypto
 
 class ChatRepository(
     private val db: FirebaseFirestore = FirebaseFirestore.getInstance(),
@@ -32,7 +33,10 @@ class ChatRepository(
                 if (error != null || snapshot == null) return@addSnapshotListener
 
                 val messages = snapshot.documents.mapNotNull { doc ->
-                    doc.toObject(ChatMessage::class.java)
+                    doc.toObject(ChatMessage::class.java)?.let { msg ->
+                        val decryptedText = ChatCrypto.decrypt(msg.text)
+                        msg.copy(text = decryptedText)
+                    }
                 }
 
                 trySend(messages)
@@ -55,8 +59,11 @@ class ChatRepository(
             .document(teamId)
             .collection("chat")
 
+        // Encrypt before storing
+        val encryptedText = ChatCrypto.encrypt(text)
+
         val message = ChatMessage(
-            text = text,
+            text = encryptedText,
             senderId = uid,
             createdAt = Timestamp.now()
         )

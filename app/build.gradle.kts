@@ -10,9 +10,16 @@ plugins {
 val mapsApiKey: String =
     gradleLocalProperties(rootDir, providers).getProperty("MAPS_API_KEY") ?: ""
 
+val chatSecret = project.findProperty("CHAT_SECRET") as String?
+    ?: "dev-fallback-secret-change-me"
+
 android {
     namespace = "com.aark.sfuscavenger"
     compileSdk = 36
+
+    buildFeatures {
+        buildConfig = true
+    }
 
     defaultConfig {
         applicationId = "com.aark.sfuscavenger"
@@ -23,6 +30,7 @@ android {
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         manifestPlaceholders["MAPS_API_KEY"] = mapsApiKey
+        buildConfigField("String", "CHAT_SECRET", "\"$chatSecret\"")
     }
 
     buildTypes {
