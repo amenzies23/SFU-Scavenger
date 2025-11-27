@@ -14,8 +14,7 @@ data class Submission(
     val userId: String = "",
     val type: String = "", // "photo" | "qr" | "text" | "geo"
     val status: String = "pending", // "pending" | "approved" | "rejected" | "auto_approved"
-    // TODO: Figure out how were handling storing images. I (Alex) can look into this.
-    // val mediaStoragePath: String? = null, // path in Cloud Storage
+    val mediaStoragePath: String? = null, // path in Cloud Storage
     // val thumbnailPath: String? = null,
     val text: String? = null, // For text-based tasks
     val geo: GeoPoint? = null, // Location tracking
