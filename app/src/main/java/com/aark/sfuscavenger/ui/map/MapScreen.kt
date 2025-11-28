@@ -42,13 +42,13 @@ import java.text.SimpleDateFormat
 import java.util.Locale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import com.google.android.gms.maps.model.BitmapDescriptorFactory
+import coil.compose.AsyncImage
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.sp
+import com.google.firebase.storage.FirebaseStorage
+import kotlinx.coroutines.tasks.await
 
-/**
- * When we set up the routing to the MapScreen, we must pass in the gameId. I am thinking this
- * should be easy, since the Lobby will start the game and this invokes the in-game pages. So
- * we can just pass the gameId between these pages.
- * */
 @Composable
 fun MapScreen(
     gameId: String,
@@ -63,15 +63,6 @@ fun MapScreen(
 
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
-
-    // We can remove this, leaving it if you want to test with being at SFU
-    // If you do, just uncomment this block, and comment everything up until the Column
-
-    // val SFU = LatLng(49.2781, -122.9199)
-
-    // val cameraPositionState = rememberCameraPositionState {
-    //    position = CameraPosition.fromLatLngZoom(SFU, 15f)
-    // }
 
     val cameraPositionState = rememberCameraPositionState()
 
@@ -161,13 +152,19 @@ fun MapScreen(
                 uiState.submissions.forEach { submission ->
                     val geo = submission.geo ?: return@forEach
                     val position = LatLng(geo.latitude, geo.longitude)
-
+                    val hue = when (submission.status?.lowercase()) {
+                        "approved" -> BitmapDescriptorFactory.HUE_GREEN
+                        "pending" -> BitmapDescriptorFactory.HUE_ORANGE
+                        "rejected" -> BitmapDescriptorFactory.HUE_RED
+                        else -> BitmapDescriptorFactory.HUE_BLUE // fallback
+                    }
                     key(submission.id) {
                         val markerState = rememberMarkerState(position = position)
                         Marker(
                             state = markerState,
                             title = "Task submission",
                             snippet = "Score: ${submission.scoreAwarded} pts",
+                            icon = BitmapDescriptorFactory.defaultMarker(hue),
                             onClick = {
                                 vm.onMarkerSelected(submission)
                                 true
@@ -195,8 +192,6 @@ fun MapScreen(
         )
     }
 }
-
-// TODO: This can probably be moved somewhere else
 @Composable
 private fun SubmissionDialog(
     submission: Submission,
@@ -215,7 +210,7 @@ private fun SubmissionDialog(
         title = { Text(text = "Task submission") },
         text = {
             Column {
-                // Displaying the task info
+                // Task info
                 if (loading) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
@@ -240,6 +235,24 @@ private fun SubmissionDialog(
                     Text("Points: ${task?.points ?: submission.scoreAwarded}")
                 }
 
+                // Photo preview for photo tasks
+                val isPhotoTask =
+                    (task?.type == "photo") || (submission.type == "photo")
+
+                if (isPhotoTask && submission.mediaStoragePath != null) {
+                    Spacer(Modifier.height(12.dp))
+                    Text(
+                        text = "Photo:",
+                        fontWeight = FontWeight.SemiBold,
+                        fontSize = 14.sp
+                    )
+                    Spacer(Modifier.height(8.dp))
+
+                    SubmissionPhotoPreview(
+                        mediaStoragePath = submission.mediaStoragePath
+                    )
+                }
+
                 Spacer(Modifier.height(12.dp))
 
                 // Submission info
@@ -254,4 +267,62 @@ private fun SubmissionDialog(
             }
         }
     )
+}
+
+@Composable
+private fun SubmissionPhotoPreview(
+    mediaStoragePath: String
+) {
+    // Local state for loading the download URL
+    var imageUrl by remember(mediaStoragePath) { mutableStateOf<String?>(null) }
+    var loading by remember(mediaStoragePath) { mutableStateOf(true) }
+    var error by remember(mediaStoragePath) { mutableStateOf<String?>(null) }
+
+    LaunchedEffect(mediaStoragePath) {
+        loading = true
+        error = null
+        try {
+            val url = FirebaseStorage.getInstance()
+                .reference
+                .child(mediaStoragePath)
+                .downloadUrl
+                .await()
+                .toString()
+
+            imageUrl = url
+        } catch (e: Exception) {
+            error = "Failed to load image."
+        } finally {
+            loading = false
+        }
+    }
+
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(200.dp)
+            .clip(RoundedCornerShape(12.dp)),
+        contentAlignment = Alignment.Center
+    ) {
+        when {
+            loading -> {
+                CircularProgressIndicator(modifier = Modifier.size(32.dp))
+            }
+            error != null -> {
+                Text(
+                    text = error ?: "Error",
+                    color = Color.Red,
+                    fontSize = 12.sp
+                )
+            }
+            imageUrl != null -> {
+                AsyncImage(
+                    model = imageUrl,
+                    contentDescription = "Submitted photo",
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize()
+                )
+            }
+        }
+    }
 }
