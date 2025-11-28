@@ -16,6 +16,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
+import com.google.firebase.firestore.Query
 
 // UI models used by the Task screen
 data class TaskUi(
@@ -52,6 +53,7 @@ data class TaskUiState(
     // Player view
     val tasks: List<TaskUi> = emptyList(),
     val completedCount: Int = 0,
+    val teamScore: Int = 0,
 
     // Host view
     val pendingSubmissions: List<SubmissionUi> = emptyList()
@@ -94,7 +96,25 @@ class TaskViewModel(
                     val teamId = findUserTeam(gameId, uid)
                     _state.update { it.copy(teamId = teamId) }
                     if (teamId != null) {
+
+                        if (!isHost && teamId != null) {
+                            // Get current team score
+                            val teamSnap = db.collection("games")
+                                .document(gameId)
+                                .collection("teams")
+                                .document(teamId)
+                                .get()
+                                .await()
+
+                            val score = teamSnap.getLong("score")?.toInt() ?: 0
+                            _state.update { it.copy(teamScore = score) }
+
+                            // Start watching the team doc for live score updates
+                            observeTeamScore(gameId, teamId)
+                        }
+
                         observeTasksAndSubmissions(gameId, teamId)
+
                     } else {
                         _state.update {
                             // If not on a team, player can't play the game
@@ -191,6 +211,7 @@ class TaskViewModel(
                     .collection("teams")
                     .document(teamId)
                     .collection("submissions")
+                    .orderBy("createdAt", Query.Direction.DESCENDING)
                     .get()
                     .await()
 
@@ -199,7 +220,13 @@ class TaskViewModel(
                 }
 
                 // Map taskId to submission status
-                val taskStatusMap = submissions.associate { it.taskId to it.status }
+                // get the most recent submission per taskId
+                val taskStatusMap = submissions
+                    .groupBy { it.taskId }
+                    .mapValues { (_, list) ->
+                        list.maxByOrNull { it.createdAt?.seconds ?: 0 }!!.status
+                    }
+
 
                 val taskUiList = tasks.map { task ->
                     val status = taskStatusMap[task.id]
@@ -383,39 +410,65 @@ class TaskViewModel(
 
         viewModelScope.launch {
             try {
-                // Get task points
-                val taskDoc = db.collection("games")
-                    .document(gameId)
+                val gameRef = db.collection("games").document(gameId)
+                val taskRef = gameRef
                     .collection("tasks")
                     .document(submission.taskId)
-                    .get()
-                    .await()
-
-                val points = taskDoc.getLong("points")?.toInt() ?: 0
-
-
-                // Update submission
-                db.collection("games")
-                    .document(gameId)
+                val teamRef = gameRef
                     .collection("teams")
                     .document(submission.teamId)
+                val submissionRef = teamRef
                     .collection("submissions")
                     .document(submission.id)
-                    .update(
+
+                db.runTransaction { tx ->
+                    //  Read the submission
+                    val subSnap = tx.get(submissionRef)
+                    if (!subSnap.exists()){
+                        throw IllegalStateException("Submission does not exist")
+                    }
+
+                    val currentStatus = subSnap.getString("status") ?: "pending"
+                    val alreadyAwarded = subSnap.getLong("scoreAwarded") ?: 0L
+
+                    // If its already approved or has points, dont award again
+                    if (currentStatus == "approved" || alreadyAwarded > 0L) {
+                        return@runTransaction null
+                    }
+
+                    // Read the task to get the point value
+                    val taskSnap = tx.get(taskRef)
+                    val points = (taskSnap.getLong("points") ?: 0L).toInt()
+
+                    // update the submission: mark approved + record score
+                    tx.update(
+                        submissionRef,
                         mapOf(
                             "status" to "approved",
                             "verifiedBy" to uid,
-                            "verifiedAt" to Timestamp.now(),
+                            "verifiedAt" to com.google.firebase.firestore.FieldValue.serverTimestamp(),
                             "scoreAwarded" to points
                         )
                     )
-                    .await()
+
+                    // Update the team: increment score + latestSubmissionAt
+                    tx.update(
+                        teamRef,
+                        mapOf(
+                            "score" to com.google.firebase.firestore.FieldValue.increment(points.toLong()),
+                            "latestSubmissionAt" to com.google.firebase.firestore.FieldValue.serverTimestamp()
+                        )
+                    )
+
+                    null
+                }.await()
 
             } catch (e: Exception) {
                 _state.update { it.copy(error = e.message) }
             }
         }
     }
+
 
     fun rejectSubmission(submission: SubmissionUi) {
         val gameId = _state.value.gameId ?: return
@@ -443,6 +496,20 @@ class TaskViewModel(
             }
         }
     }
+
+    private fun observeTeamScore(gameId: String, teamId: String) {
+        db.collection("games")
+            .document(gameId)
+            .collection("teams")
+            .document(teamId)
+            .addSnapshotListener { snap, _ ->
+                if (snap != null && snap.exists()) {
+                    val score = snap.getLong("score")?.toInt() ?: 0
+                    _state.update { it.copy(teamScore = score) }
+                }
+            }
+    }
+
 
     // Cleanup
     override fun onCleared() {

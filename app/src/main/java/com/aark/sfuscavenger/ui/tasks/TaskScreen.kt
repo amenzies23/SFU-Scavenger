@@ -116,6 +116,15 @@ private fun PlayerTaskView(
             color = Black,
             modifier = Modifier.padding(bottom = 8.dp)
         )
+
+        Text(
+            text = "Team Score: ${state.teamScore} pts",
+            fontSize = 18.sp,
+            fontWeight = FontWeight.SemiBold,
+            color = Maroon,
+            modifier = Modifier.padding(bottom = 12.dp)
+        )
+
         // how many tasks the player completed
         Text(
             text = "${state.completedCount}/${state.tasks.size} completed",
@@ -166,11 +175,7 @@ private fun TaskCard(
         else -> Color.White
     }
 
-    // Only allow clicking if the task hasn't been completed or submitted yet
-    // TODO: Update this logic later so players can resubmit certain tasks. Unless we decide to
-    // not let players resubmit after submitting.
-    //
-    val isClickable = !task.isCompleted && !task.isPending
+    val isClickable = task.isRejected || (!task.isCompleted && !task.isPending)
 
     Card(
         modifier = Modifier.fillMaxWidth(),
