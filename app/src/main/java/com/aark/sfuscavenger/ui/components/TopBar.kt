@@ -3,6 +3,7 @@ package com.aark.sfuscavenger.ui.components
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -33,7 +34,7 @@ fun TopBar(
 //    Column {
     TopAppBar(
         modifier = modifier,
-        windowInsets = WindowInsets(0),
+        windowInsets = WindowInsets.statusBars,
         colors = TopAppBarDefaults.topAppBarColors(
             containerColor = Maroon,
             titleContentColor = White,
