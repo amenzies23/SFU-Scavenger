@@ -49,7 +49,8 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 @Composable
 fun TaskScreen(
     gameId: String,
-    vm: TaskViewModel = viewModel()
+    vm: TaskViewModel = viewModel(),
+    onEndGame: () -> Unit = {}
 ) {
 
     // Grab the latest UI state from the ViewModel
@@ -59,6 +60,7 @@ fun TaskScreen(
     // Separate selection states for text vs photo tasks
     var selectedTextTask by remember { mutableStateOf<TaskUi?>(null) }
     var selectedPhotoTask by remember { mutableStateOf<TaskUi?>(null) }
+    var showEndGameDialog by remember { mutableStateOf(false) }
 
     // When gameId changes or screen loads, start fetching tasks for that game
     LaunchedEffect(gameId) {
@@ -93,7 +95,8 @@ fun TaskScreen(
                     HostTaskView(
                         state = state,
                         onApprove = { vm.approveSubmission(it) },
-                        onReject = { vm.rejectSubmission(it) }
+                        onReject = { vm.rejectSubmission(it) },
+                        onEndGame = { showEndGameDialog = true }
                     )
 
                 } else {
@@ -133,6 +136,46 @@ fun TaskScreen(
             onSubmitPhoto = { bytes ->
                 vm.submitPhotoAnswer(task.id, bytes)
                 selectedPhotoTask = null
+            }
+        )
+    }
+
+    // End game confirmation dialog
+    if (showEndGameDialog) {
+        AlertDialog(
+            onDismissRequest = { showEndGameDialog = false },
+            containerColor = Color(0xFFF3ECE7),
+            shape = RoundedCornerShape(16.dp),
+            title = {
+                Text(
+                    text = "End Game?",
+                    fontWeight = FontWeight.Bold,
+                    color = Black
+                )
+            },
+            text = {
+                Text(
+                    text = "Are you sure you want to end this game? This will finalize all scores and show the results.",
+                    color = Black
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showEndGameDialog = false
+                        vm.endGame()
+                        onEndGame()
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = Maroon)
+                ) {
+                    Text("End Game", color = White)
+                }
+            },
+
+            dismissButton = {
+                TextButton(onClick = { showEndGameDialog = false }) {
+                    Text("Cancel", color = Maroon)
+                }
             }
         )
     }
@@ -485,7 +528,8 @@ private fun PhotoSubmissionDialog(
 private fun HostTaskView(
     state: TaskUiState,
     onApprove: (SubmissionUi) -> Unit,
-    onReject: (SubmissionUi) -> Unit
+    onReject: (SubmissionUi) -> Unit,
+    onEndGame: () -> Unit
 ) {
     Column {
         Text(
@@ -504,7 +548,9 @@ private fun HostTaskView(
 
         if (state.pendingSubmissions.isEmpty()) {
             Box(
-                modifier = Modifier.fillMaxSize(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
@@ -515,6 +561,7 @@ private fun HostTaskView(
             }
         } else {
             LazyColumn(
+                modifier = Modifier.weight(1f),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 items(state.pendingSubmissions, key = { it.id }) { submission ->
@@ -525,6 +572,25 @@ private fun HostTaskView(
                     )
                 }
             }
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Button(
+            onClick = onEndGame,
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(12.dp),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = Maroon,
+                contentColor = White
+            )
+        ) {
+            Text(
+                text = "End Game",
+                modifier = Modifier.padding(vertical = 8.dp),
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Bold
+            )
         }
     }
 }

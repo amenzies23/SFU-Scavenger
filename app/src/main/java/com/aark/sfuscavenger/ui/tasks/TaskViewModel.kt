@@ -543,6 +543,53 @@ class TaskViewModel(
         }
     }
 
+    /**
+     * Host: End the game
+     * Updates game status to "ended" and calculates team placements
+     */
+    fun endGame() {
+        val gameId = _state.value.gameId ?: return
+
+        viewModelScope.launch {
+            try {
+                // Get all teams and sort by score
+                val teamsSnap = db.collection("games")
+                    .document(gameId)
+                    .collection("teams")
+                    .get()
+                    .await()
+
+                val teams = teamsSnap.documents.mapNotNull { doc ->
+                    doc.toObject(Team::class.java)?.copy(id = doc.id)
+                }.sortedByDescending { it.score }
+
+                // Update each team with their placement
+                teams.forEachIndexed { index, team ->
+                    db.collection("games")
+                        .document(gameId)
+                        .collection("teams")
+                        .document(team.id)
+                        .update("placement", index + 1)
+                        .await()
+                }
+
+                // Update game status to "ended"
+                db.collection("games")
+                    .document(gameId)
+                    .update(
+                        mapOf(
+                            "status" to "ended",
+                            "endedAt" to Timestamp.now()
+                        )
+                    )
+                    .await()
+
+            } catch (e: Exception) {
+                _state.update { it.copy(error = "Failed to end game: ${e.message}") }
+            }
+        }
+    }
+
     private fun observeTeamScore(gameId: String, teamId: String) {
         db.collection("games")
             .document(gameId)
