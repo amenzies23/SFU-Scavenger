@@ -557,7 +557,7 @@ private fun TaskCard(
                 )
 
                 var expanded by remember { mutableStateOf(false) }
-                val taskTypes = listOf("text", "photo", "qr", "geo")
+                val taskTypes = listOf("text", "photo", "qr")
 
                 ExposedDropdownMenuBox(
                     expanded = expanded,
@@ -899,7 +899,7 @@ private fun AddTask(
                 )
 
                 var expanded by remember { mutableStateOf(false) }
-                val taskTypes = listOf("text", "photo", "qr", "geo")
+                val taskTypes = listOf("text", "photo", "qr")
 
                 ExposedDropdownMenuBox(
                     expanded = expanded,
