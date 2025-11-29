@@ -10,13 +10,15 @@ import com.google.firebase.Timestamp
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.ListenerRegistration
+import com.google.firebase.firestore.Query
+import com.google.firebase.storage.FirebaseStorage
+import com.google.firebase.storage.StorageMetadata
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
-import com.google.firebase.firestore.Query
 
 // UI models used by the Task screen
 data class TaskUi(
@@ -40,6 +42,7 @@ data class SubmissionUi(
     val submitterName: String,
     val type: String,
     val textAnswer: String? = null,
+    val photoUrl: String? = null,
     val status: String
 )
 
@@ -61,7 +64,8 @@ data class TaskUiState(
 
 class TaskViewModel(
     private val db: FirebaseFirestore = FirebaseFirestore.getInstance(),
-    private val auth: FirebaseAuth = FirebaseAuth.getInstance()
+    private val auth: FirebaseAuth = FirebaseAuth.getInstance(),
+    private val storage: FirebaseStorage = FirebaseStorage.getInstance()
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(TaskUiState())
@@ -86,7 +90,6 @@ class TaskViewModel(
                 val isHost = uid != null && uid == game?.ownerId
 
                 _state.update { it.copy(isHost = isHost) }
-
 
                 if (isHost) {
                     // Hosts watch all submissions from all teams
@@ -128,7 +131,6 @@ class TaskViewModel(
             }
         }
     }
-
 
     /**
      * Finds which team the user belongs to for this game
@@ -227,7 +229,6 @@ class TaskViewModel(
                         list.maxByOrNull { it.createdAt?.seconds ?: 0 }!!.status
                     }
 
-
                 val taskUiList = tasks.map { task ->
                     val status = taskStatusMap[task.id]
                     TaskUi(
@@ -292,6 +293,52 @@ class TaskViewModel(
     }
 
     /**
+     * Player
+     */
+    fun submitPhotoAnswer(taskId: String, imageData: ByteArray) {
+        val gameId = _state.value.gameId ?: return
+        val teamId = _state.value.teamId ?: return
+        val uid = auth.currentUser?.uid ?: return
+
+        viewModelScope.launch {
+            try {
+                val teamSubmissionsRef = db.collection("games")
+                    .document(gameId)
+                    .collection("teams")
+                    .document(teamId)
+                    .collection("submissions")
+
+                val submissionDocRef = teamSubmissionsRef.document()
+                val submissionId = submissionDocRef.id
+
+                val storagePath = "submissions/$submissionId/image.jpg"
+                val storageRef = storage.reference.child(storagePath)
+
+                val metadata = StorageMetadata.Builder()
+                    .setContentType("image/jpeg")
+                    .build()
+                storageRef.putBytes(imageData, metadata).await()
+
+                val submission = hashMapOf(
+                    "taskId" to taskId,
+                    "userId" to uid,
+                    "type" to "photo",
+                    "status" to "pending",
+                    "mediaStoragePath" to storagePath,
+                    "createdAt" to Timestamp.now(),
+                    "scoreAwarded" to 0
+                )
+
+                submissionDocRef.set(submission).await()
+
+            } catch (e: Exception) {
+                _state.update { it.copy(error = "Failed to submit photo: ${e.message}") }
+            }
+        }
+    }
+
+
+    /**
      * Host; Observe all submissions
      */
     private fun observeAllSubmissions(gameId: String) {
@@ -319,7 +366,7 @@ class TaskViewModel(
                     doc.id to (doc.toObject(Task::class.java)?.name ?: "Unknown Task")
                 }
 
-                // Listen to each team's submissions
+                // Listen to each teams submissions
                 for (team in teams) {
                     val listener = db.collection("games")
                         .document(gameId)
@@ -367,7 +414,6 @@ class TaskViewModel(
                 .get()
                 .await()
 
-
             for (doc in subsSnap.documents) {
                 val sub = doc.toObject(Submission::class.java)?.copy(id = doc.id) ?: continue
 
@@ -380,13 +426,14 @@ class TaskViewModel(
                     SubmissionUi(
                         id = sub.id,
                         taskId = sub.taskId,
-                        taskName = taskMap[sub.taskId] ?:"Unknown Task",
+                        taskName = taskMap[sub.taskId] ?: "Unknown Task",
                         teamId = team.id,
                         teamName = team.name,
                         submitterId = sub.userId,
                         submitterName = submitterName,
                         type = sub.type,
                         textAnswer = sub.text,
+                        photoUrl = sub.mediaStoragePath,
                         status = sub.status
                     )
                 )
@@ -424,7 +471,7 @@ class TaskViewModel(
                 db.runTransaction { tx ->
                     //  Read the submission
                     val subSnap = tx.get(submissionRef)
-                    if (!subSnap.exists()){
+                    if (!subSnap.exists()) {
                         throw IllegalStateException("Submission does not exist")
                     }
 
@@ -469,7 +516,6 @@ class TaskViewModel(
         }
     }
 
-
     fun rejectSubmission(submission: SubmissionUi) {
         val gameId = _state.value.gameId ?: return
         val uid = auth.currentUser?.uid ?: return
@@ -509,7 +555,6 @@ class TaskViewModel(
                 }
             }
     }
-
 
     // Cleanup
     override fun onCleared() {
