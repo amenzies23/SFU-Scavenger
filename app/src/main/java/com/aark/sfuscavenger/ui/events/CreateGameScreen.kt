@@ -980,7 +980,7 @@ private fun PlacePickerButton(vm: CreateGameViewModel) {
 
     Button(
         onClick = {
-            val intent = Autocomplete.IntentBuilder(AutocompleteActivityMode.FULLSCREEN, fields)
+            val intent = Autocomplete.IntentBuilder(AutocompleteActivityMode.OVERLAY, fields)
                 .build(context)
             launcher.launch(intent)
         },
