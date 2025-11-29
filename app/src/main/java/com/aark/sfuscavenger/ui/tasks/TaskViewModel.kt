@@ -1,5 +1,9 @@
 package com.aark.sfuscavenger.ui.tasks
 
+import android.Manifest
+import android.content.Context
+import android.content.pm.PackageManager
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.aark.sfuscavenger.data.models.Game
@@ -9,6 +13,7 @@ import com.aark.sfuscavenger.data.models.Team
 import com.google.firebase.Timestamp
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.GeoPoint
 import com.google.firebase.firestore.ListenerRegistration
 import com.google.firebase.firestore.Query
 import com.google.firebase.storage.FirebaseStorage
@@ -19,6 +24,12 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
+import android.location.Location
+import android.location.LocationListener
+import android.location.LocationManager
+import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlin.coroutines.resume
+
 
 // UI models used by the Task screen
 data class TaskUi(
@@ -40,6 +51,7 @@ data class SubmissionUi(
     val teamName: String,
     val submitterId: String,
     val submitterName: String,
+    val submitterPhotoUrl: String?,
     val type: String,
     val textAnswer: String? = null,
     val photoUrl: String? = null,
@@ -258,16 +270,64 @@ class TaskViewModel(
     }
 
     /**
-     * Player
-     * Submits text answer
+     * Helper function to get current location
      */
-    fun submitTextAnswer(taskId: String, answer: String) {
+    private suspend fun getCurrentLocation(context: Context): GeoPoint? {
+        return try {
+            val hasPermission = ContextCompat.checkSelfPermission(
+                context,
+                Manifest.permission.ACCESS_FINE_LOCATION
+            ) == PackageManager.PERMISSION_GRANTED
+            if (!hasPermission) return null
+
+            val locationManager =
+                context.getSystemService(Context.LOCATION_SERVICE) as LocationManager
+
+            // Try last known location first
+            val last=locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER)
+            if (last != null) {
+                return GeoPoint(last.latitude, last.longitude)
+            }
+
+            // Otherwise request new GPS fix
+            suspendCancellableCoroutine { cont ->
+                val listener = object : LocationListener {
+                    override fun onLocationChanged(loc: Location) {
+                        cont.resume(GeoPoint(loc.latitude, loc.longitude))
+                        locationManager.removeUpdates(this)
+                    }
+                }
+
+                locationManager.requestLocationUpdates(
+                    LocationManager.GPS_PROVIDER,
+                    0L,
+                    0f,
+                    listener
+                )
+
+                cont.invokeOnCancellation {
+                    locationManager.removeUpdates(listener)
+                }
+            }
+
+        } catch (e: Exception) {
+            null
+        }
+    }
+
+    /**
+     * Player
+     * Submits text answer with geolocation
+     */
+    fun submitTextAnswer(taskId: String, answer: String, context: Context) {
         val gameId = _state.value.gameId ?: return
         val teamId = _state.value.teamId ?: return
         val uid = auth.currentUser?.uid ?: return
 
         viewModelScope.launch {
             try {
+                val geoPoint = getCurrentLocation(context)
+
                 val submission = hashMapOf(
                     "taskId" to taskId,
                     "userId" to uid,
@@ -277,6 +337,11 @@ class TaskViewModel(
                     "createdAt" to Timestamp.now(),
                     "scoreAwarded" to 0
                 )
+
+                // Add geo location if available
+                if (geoPoint != null) {
+                    submission["geo"] = geoPoint
+                }
 
                 db.collection("games")
                     .document(gameId)
@@ -294,8 +359,9 @@ class TaskViewModel(
 
     /**
      * Player
+     * Submits photo answer with geolocation
      */
-    fun submitPhotoAnswer(taskId: String, imageData: ByteArray) {
+    fun submitPhotoAnswer(taskId: String, imageData: ByteArray, context: Context) {
         val gameId = _state.value.gameId ?: return
         val teamId = _state.value.teamId ?: return
         val uid = auth.currentUser?.uid ?: return
@@ -310,15 +376,13 @@ class TaskViewModel(
 
                 val submissionDocRef = teamSubmissionsRef.document()
                 val submissionId = submissionDocRef.id
-
                 val storagePath = "submissions/$submissionId/image.jpg"
                 val storageRef = storage.reference.child(storagePath)
-
                 val metadata = StorageMetadata.Builder()
                     .setContentType("image/jpeg")
                     .build()
                 storageRef.putBytes(imageData, metadata).await()
-
+                val geoPoint = getCurrentLocation(context)
                 val submission = hashMapOf(
                     "taskId" to taskId,
                     "userId" to uid,
@@ -329,8 +393,11 @@ class TaskViewModel(
                     "scoreAwarded" to 0
                 )
 
-                submissionDocRef.set(submission).await()
+                if (geoPoint != null) {
+                    submission["geo"] = geoPoint
+                }
 
+                submissionDocRef.set(submission).await()
             } catch (e: Exception) {
                 _state.update { it.copy(error = "Failed to submit photo: ${e.message}") }
             }
@@ -422,6 +489,8 @@ class TaskViewModel(
                     ?: userDoc.getString("email")
                     ?: "Unknown"
 
+                val submitterPhoto = userDoc.getString("photoUrl")  // Fetch pfp
+
                 allSubmissions.add(
                     SubmissionUi(
                         id = sub.id,
@@ -431,6 +500,7 @@ class TaskViewModel(
                         teamName = team.name,
                         submitterId = sub.userId,
                         submitterName = submitterName,
+                        submitterPhotoUrl = submitterPhoto,
                         type = sub.type,
                         textAnswer = sub.text,
                         photoUrl = sub.mediaStoragePath,

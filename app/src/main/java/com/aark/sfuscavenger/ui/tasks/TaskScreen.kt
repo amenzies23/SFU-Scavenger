@@ -39,6 +39,8 @@ import java.io.File
 import android.graphics.BitmapFactory
 import androidx.core.content.FileProvider
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.background
+
 
 /**
  * TaskScreen handles both the player and host workflows for tasks
@@ -52,6 +54,7 @@ fun TaskScreen(
     vm: TaskViewModel = viewModel(),
     onEndGame: () -> Unit = {}
 ) {
+    val context = LocalContext.current
 
     // Grab the latest UI state from the ViewModel
     // re-composes whenever state changes
@@ -122,7 +125,7 @@ fun TaskScreen(
             task = task,
             onDismiss = { selectedTextTask = null },
             onSubmit = { answer ->
-                vm.submitTextAnswer(task.id, answer)
+                vm.submitTextAnswer(task.id, answer, context)
                 selectedTextTask = null
             }
         )
@@ -134,7 +137,7 @@ fun TaskScreen(
             task = task,
             onDismiss = { selectedPhotoTask = null },
             onSubmitPhoto = { bytes ->
-                vm.submitPhotoAnswer(task.id, bytes)
+                vm.submitPhotoAnswer(task.id, bytes, context)
                 selectedPhotoTask = null
             }
         )
@@ -171,7 +174,6 @@ fun TaskScreen(
                     Text("End Game", color = White)
                 }
             },
-
             dismissButton = {
                 TextButton(onClick = { showEndGameDialog = false }) {
                     Text("Cancel", color = Maroon)
@@ -615,16 +617,54 @@ private fun SubmissionCard(
                 .fillMaxWidth()
                 .padding(16.dp)
         ) {
+
+            // Submitter name, team, and pfp
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
-                    text = submission.taskName,
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Black
-                )
+
+                if (!submission.submitterPhotoUrl.isNullOrBlank()) {
+                    AsyncImage(
+                        model = submission.submitterPhotoUrl,
+                        contentDescription = "Submitter Photo",
+                        modifier = Modifier
+                            .size(42.dp)
+                            .clip(RoundedCornerShape(50)),
+                        contentScale = ContentScale.Crop
+                    )
+                } else {
+                    Box(
+                        modifier = Modifier
+                            .size(42.dp)
+                            .clip(RoundedCornerShape(50))
+                            .background(Color(0xFFA46A4B)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = submission.submitterName.firstOrNull()?.uppercase() ?: "?",
+                            color = Color.White,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.width(12.dp))
+
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = submission.submitterName,
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Black
+                    )
+                    Text(
+                        text = "Team: ${submission.teamName}",
+                        fontSize = 13.sp,
+                        color = Color.Gray
+                    )
+                }
+
                 Text(
                     text = submission.type.uppercase(),
                     fontSize = 12.sp,
@@ -632,17 +672,13 @@ private fun SubmissionCard(
                 )
             }
 
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(12.dp))
 
             Text(
-                text = "Team: ${submission.teamName}",
-                fontSize = 13.sp,
-                color = Color.Gray
-            )
-            Text(
-                text = "Submitted by: ${submission.submitterName}",
-                fontSize = 13.sp,
-                color = Color.Gray
+                text = submission.taskName,
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Bold,
+                color = Black
             )
 
             if (!submission.textAnswer.isNullOrBlank()) {
