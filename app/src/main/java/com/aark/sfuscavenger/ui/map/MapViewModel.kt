@@ -16,8 +16,10 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-
-
+import com.google.firebase.storage.FirebaseStorage
+import kotlinx.coroutines.tasks.await
+import kotlinx.coroutines.withContext
+import android.util.Log
 data class MapUiState(
     val submissions: List<Submission> = emptyList(),
     val loading: Boolean = true,
@@ -25,7 +27,9 @@ data class MapUiState(
     val selectedSubmission: Submission? = null,
     val selectedTask: Task? = null,
     val dialogLoading: Boolean = false,
-    val gameName: String = ""
+    val gameName: String = "",
+    val selectedImageUrl: String? = null,
+    val imageError: String? = null
 )
 
 class MapViewModel(
@@ -34,7 +38,10 @@ class MapViewModel(
     private val gameRepo: GameRepository = GameRepository(),
     private val taskRepo: TaskRepository = TaskRepository()
 ) : ViewModel() {
-
+    companion object {
+        private const val TAG = "MapViewModel"
+        private val imageUrlCache = mutableMapOf<String, String>()
+    }
     private val _uiState = MutableStateFlow(MapUiState())
     val uiState: StateFlow<MapUiState> = _uiState.asStateFlow()
 
@@ -94,7 +101,9 @@ class MapViewModel(
             it.copy(
                 selectedSubmission = submission,
                 selectedTask = null,
-                dialogLoading = true
+                dialogLoading = true,
+                selectedImageUrl = null,
+                imageError = null
             )
         }
 
@@ -106,17 +115,66 @@ class MapViewModel(
                     taskRepo.getTask(gameId, submission.taskId)
                 }
             } catch (e: Exception) {
+                Log.e(TAG, "Failed to load task ${submission.taskId}", e)
                 null
+            }
+
+            var imageUrl: String? = null
+            var imageError: String? = null
+
+            val isPhotoTask =
+                (task?.type == "photo") || (submission.type == "photo")
+
+            val mediaPath = submission.mediaStoragePath
+
+            if (isPhotoTask && mediaPath != null) {
+                Log.d(TAG, "Photo submission selected. mediaPath=$mediaPath")
+
+                // Try cache first
+                val cached = imageUrlCache[mediaPath]
+                if (cached != null) {
+                    Log.d(TAG, "Image cache HIT for $mediaPath -> $cached")
+                    imageUrl = cached
+                } else {
+                    Log.d(TAG, "Image cache MISS for $mediaPath, fetching from Storage")
+
+                    try {
+                        imageUrl = withContext(Dispatchers.IO) {
+                            FirebaseStorage.getInstance()
+                                .reference
+                                .child(mediaPath)
+                                .downloadUrl
+                                .await()
+                                .toString()
+                        }
+                        Log.d(TAG, "Fetched imageUrl for $mediaPath -> $imageUrl")
+
+                        imageUrlCache[mediaPath] = imageUrl!!
+                        Log.d(TAG, "Cached imageUrl for $mediaPath")
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Failed to fetch image for $mediaPath", e)
+                        imageError = "Failed to load image."
+                    }
+                }
+            } else {
+                Log.d(
+                    TAG,
+                    "Submission ${submission.id} is not a photo task or has no " +
+                            "mediaStoragePath (isPhotoTask=$isPhotoTask, mediaPath=$mediaPath)"
+                )
             }
 
             _uiState.update {
                 it.copy(
                     selectedTask = task,
-                    dialogLoading = false
+                    dialogLoading = false,
+                    selectedImageUrl = imageUrl,
+                    imageError = imageError
                 )
             }
         }
     }
+
 
     fun onDialogDismiss() {
         _uiState.update {

@@ -188,6 +188,8 @@ fun MapScreen(
             submission = sub,
             task = uiState.selectedTask,
             loading = uiState.dialogLoading,
+            imageUrl = uiState.selectedImageUrl,
+            imageError = uiState.imageError,
             onDismiss = { vm.onDialogDismiss() }
         )
     }
@@ -197,6 +199,8 @@ private fun SubmissionDialog(
     submission: Submission,
     task: Task?,
     loading: Boolean,
+    imageUrl: String?,
+    imageError: String?,
     onDismiss: () -> Unit
 ) {
     AlertDialog(
@@ -239,7 +243,7 @@ private fun SubmissionDialog(
                 val isPhotoTask =
                     (task?.type == "photo") || (submission.type == "photo")
 
-                if (isPhotoTask && submission.mediaStoragePath != null) {
+                if (isPhotoTask) {
                     Spacer(Modifier.height(12.dp))
                     Text(
                         text = "Photo:",
@@ -249,7 +253,8 @@ private fun SubmissionDialog(
                     Spacer(Modifier.height(8.dp))
 
                     SubmissionPhotoPreview(
-                        mediaStoragePath = submission.mediaStoragePath
+                        imageUrl = imageUrl,
+                        error = imageError
                     )
                 }
 
@@ -271,32 +276,9 @@ private fun SubmissionDialog(
 
 @Composable
 private fun SubmissionPhotoPreview(
-    mediaStoragePath: String
+    imageUrl: String?,
+    error: String?
 ) {
-    // Local state for loading the download URL
-    var imageUrl by remember(mediaStoragePath) { mutableStateOf<String?>(null) }
-    var loading by remember(mediaStoragePath) { mutableStateOf(true) }
-    var error by remember(mediaStoragePath) { mutableStateOf<String?>(null) }
-
-    LaunchedEffect(mediaStoragePath) {
-        loading = true
-        error = null
-        try {
-            val url = FirebaseStorage.getInstance()
-                .reference
-                .child(mediaStoragePath)
-                .downloadUrl
-                .await()
-                .toString()
-
-            imageUrl = url
-        } catch (e: Exception) {
-            error = "Failed to load image."
-        } finally {
-            loading = false
-        }
-    }
-
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -305,12 +287,13 @@ private fun SubmissionPhotoPreview(
         contentAlignment = Alignment.Center
     ) {
         when {
-            loading -> {
+            imageUrl == null && error == null -> {
+                // still loading
                 CircularProgressIndicator(modifier = Modifier.size(32.dp))
             }
             error != null -> {
                 Text(
-                    text = error ?: "Error",
+                    text = error,
                     color = Color.Red,
                     fontSize = 12.sp
                 )
