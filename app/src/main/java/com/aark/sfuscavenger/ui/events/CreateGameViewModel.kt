@@ -6,6 +6,7 @@ import com.aark.sfuscavenger.data.models.Game
 import com.aark.sfuscavenger.data.models.Task
 import com.aark.sfuscavenger.repositories.GameRepository
 import com.aark.sfuscavenger.repositories.TaskRepository
+import com.google.firebase.Timestamp
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.GeoPoint
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -78,6 +79,10 @@ class CreateGameViewModel(
         _game.value = _game.value.copy(location = geoPoint)
     }
 
+    fun updateStartTime(timestamp: Timestamp?) {
+        _game.value = _game.value.copy(startTime = timestamp)
+    }
+
     fun saveGame() {
         viewModelScope.launch {
             _loading.value = true
@@ -102,7 +107,8 @@ class CreateGameViewModel(
                         lng = currentGame.location?.longitude ?: -123.1207,
                         joinMode = currentGame.joinMode,
                         joinCode = currentGame.joinCode?.ifBlank { null },
-                        description = currentGame.description
+                        description = currentGame.description,
+                        startTime = currentGame.startTime
                     )
                 }
 

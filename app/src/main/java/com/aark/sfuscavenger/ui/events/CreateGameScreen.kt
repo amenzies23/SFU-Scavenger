@@ -20,6 +20,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
@@ -35,6 +37,9 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
+import androidx.compose.material3.TimePicker
+import androidx.compose.material3.rememberDatePickerState
+import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -60,6 +65,12 @@ import com.aark.sfuscavenger.ui.theme.DarkOrange
 import com.aark.sfuscavenger.ui.theme.LightBeige
 import com.aark.sfuscavenger.ui.theme.Maroon
 import com.aark.sfuscavenger.ui.theme.White
+import com.google.firebase.Timestamp
+import java.text.SimpleDateFormat
+import java.util.Calendar
+import java.util.Date
+import java.util.Locale
+import java.util.TimeZone
 
 @Composable
 fun CreateGameScreen(navController: NavController, gameId: String? = null, vm: CreateGameViewModel = viewModel()) {
@@ -138,6 +149,12 @@ private fun GameTab(navController: NavController,
     val game = vm.game.collectAsState()
     val loading = vm.loading.collectAsState()
     val error = vm.error.collectAsState()
+
+    var isScheduled by remember { mutableStateOf(game.value.startTime != null)}
+
+    LaunchedEffect(game.value.startTime) {
+        isScheduled = game.value.startTime != null
+    }
 
     Column(
         modifier = modifier.fillMaxSize()
@@ -220,6 +237,54 @@ private fun GameTab(navController: NavController,
                     )
                 }
             }
+
+            item {
+
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 8.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Start Time",
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = Black
+                    )
+
+                    Switch(
+                        checked = isScheduled,
+                        onCheckedChange = { checked ->
+                            isScheduled = checked
+                            if (!checked) {
+                                vm.updateStartTime(null)
+                            }
+                        },
+                        colors = SwitchDefaults.colors(
+                            checkedThumbColor = White,
+                            checkedTrackColor = Maroon,
+                            uncheckedThumbColor = Maroon,
+                            uncheckedTrackColor = LightBeige
+                        ),
+                        modifier = Modifier.scale(0.8f)
+                    )
+                }
+
+            }
+
+            item {
+                if (game.value.startTime != null || isScheduled) {
+                    DateTimePicker(
+                        selectedTime = game.value.startTime,
+                        onTimeSelected = { timestamp ->
+                            vm.updateStartTime(timestamp)
+                        }
+                    )
+                }
+            }
+
 
             if (error.value != null) {
                 item {
@@ -517,6 +582,160 @@ private fun TaskCard(
         }
     }
 }
+
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun DateTimePicker(
+    selectedTime: Timestamp?,
+    onTimeSelected: (Timestamp) -> Unit
+) {
+    var showDatePicker by remember { mutableStateOf(false) }
+    var showTimePicker by remember { mutableStateOf(false) }
+
+    val calendar = remember {
+        Calendar.getInstance().apply {
+            selectedTime?.toDate()?.let { time = it }
+        }
+    }
+
+    val dateFormat = remember {
+        SimpleDateFormat("MMM dd, yyyy", Locale.getDefault()).apply {
+            timeZone = TimeZone.getDefault()
+        }
+    }
+    val timeFormat = remember {
+        SimpleDateFormat("hh:mm a", Locale.getDefault()).apply {
+            timeZone = TimeZone.getDefault()
+        }
+    }
+
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        Text(
+            text = "Start Date & Time",
+            fontSize = 14.sp,
+            fontWeight = FontWeight.Medium,
+            color = Maroon
+        )
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            // Date Button
+            Button(
+                onClick = { showDatePicker = true },
+                modifier = Modifier.weight(1f),
+                shape = RoundedCornerShape(8.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = LightBeige,
+                    contentColor = Black
+                )
+            ) {
+                Text(
+                    text = selectedTime?.let { dateFormat.format(it.toDate()) } ?: "Select Date",
+                    fontSize = 14.sp
+                )
+            }
+
+            // Time Button
+            Button(
+                onClick = { showTimePicker = true },
+                modifier = Modifier.weight(1f),
+                shape = RoundedCornerShape(8.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = LightBeige,
+                    contentColor = Black
+                )
+            ) {
+                Text(
+                    text = selectedTime?.let { timeFormat.format(it.toDate()) } ?: "Select Time",
+                    fontSize = 14.sp
+                )
+            }
+        }
+    }
+
+    if (showDatePicker) {
+        val initialDateMillis = Calendar.getInstance().apply {
+            timeInMillis = calendar.timeInMillis
+            set(Calendar.HOUR_OF_DAY, 0)
+            set(Calendar.MINUTE, 0)
+            set(Calendar.SECOND, 0)
+            set(Calendar.MILLISECOND, 0)
+        }.timeInMillis
+
+        val datePickerState = rememberDatePickerState(
+            initialSelectedDateMillis = initialDateMillis
+        )
+
+        DatePickerDialog(
+            onDismissRequest = { showDatePicker = false },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        datePickerState.selectedDateMillis?.let { millis ->
+                            val utcCal = Calendar.getInstance(TimeZone.getTimeZone("UTC"))
+                            utcCal.timeInMillis = millis
+
+                            calendar.set(Calendar.YEAR, utcCal.get(Calendar.YEAR))
+                            calendar.set(Calendar.MONTH, utcCal.get(Calendar.MONTH))
+                            calendar.set(Calendar.DAY_OF_MONTH, utcCal.get(Calendar.DAY_OF_MONTH))
+
+                            onTimeSelected(Timestamp(Date(calendar.timeInMillis)))
+                        }
+                        showDatePicker = false
+                    }
+                ) {
+                    Text("OK")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDatePicker = false }) {
+                    Text("Cancel")
+                }
+            }
+        ) {
+            DatePicker(state = datePickerState)
+        }
+    }
+
+    if (showTimePicker) {
+        val timePickerState = rememberTimePickerState(
+            initialHour = calendar.get(Calendar.HOUR_OF_DAY),
+            initialMinute = calendar.get(Calendar.MINUTE)
+        )
+
+        AlertDialog(
+            onDismissRequest = { showTimePicker = false },
+            title = { Text("Select Time") },
+            text = {
+                TimePicker(state = timePickerState)
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        calendar.set(Calendar.HOUR_OF_DAY, timePickerState.hour)
+                        calendar.set(Calendar.MINUTE, timePickerState.minute)
+                        onTimeSelected(Timestamp(Date(calendar.timeInMillis)))
+                        showTimePicker = false
+                    }
+                ) {
+                    Text("OK")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showTimePicker = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
+}
+
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

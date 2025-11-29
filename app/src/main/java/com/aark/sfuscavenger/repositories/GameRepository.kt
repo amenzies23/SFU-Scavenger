@@ -40,7 +40,8 @@ class GameRepository(
         lng: Double,
         joinMode: String = "code",
         joinCode: String? = null,
-        description: String = ""
+        description: String = "",
+        startTime: Timestamp? = null
     ): String {
         val ownerId = auth.currentUser?.uid
             ?: throw IllegalStateException("User must be logged in to create a game")
@@ -64,6 +65,7 @@ class GameRepository(
             joinCode = finalJoinCode,
             description = description,
             createdAt = Timestamp.now(),
+            startTime = startTime,
             location = geo,
             geohash = geohash
         )
@@ -152,11 +154,12 @@ class GameRepository(
     }
 
     suspend fun updateGame(game: Game) {
-        val updates = hashMapOf<String, Any>(
+        val updates = hashMapOf<String, Any?>(
             "name" to game.name,
             "description" to game.description,
             "joinMode" to game.joinMode,
-            "updatedAt" to Timestamp.now()
+            "updatedAt" to Timestamp.now(),
+            "startTime" to game.startTime
         )
 
         gamesCollection.document(game.id).update(updates).await()
