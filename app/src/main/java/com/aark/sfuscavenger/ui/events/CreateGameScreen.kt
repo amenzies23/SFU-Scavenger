@@ -1,5 +1,9 @@
 package com.aark.sfuscavenger.ui.events
 
+import android.app.Activity
+import android.content.Intent
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -14,9 +18,13 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material3.Icon
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -51,6 +59,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.font.FontWeight.Companion.Bold
 import androidx.compose.ui.text.style.TextDecoration.Companion.Underline
@@ -58,6 +67,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
+import com.aark.sfuscavenger.BuildConfig
 import com.aark.sfuscavenger.data.models.Task
 import com.aark.sfuscavenger.ui.theme.Beige
 import com.aark.sfuscavenger.ui.theme.Black
@@ -65,7 +75,13 @@ import com.aark.sfuscavenger.ui.theme.DarkOrange
 import com.aark.sfuscavenger.ui.theme.LightBeige
 import com.aark.sfuscavenger.ui.theme.Maroon
 import com.aark.sfuscavenger.ui.theme.White
+import com.google.android.libraries.places.api.Places
+import com.google.android.libraries.places.api.model.Place
+import com.google.android.libraries.places.widget.Autocomplete
+import com.google.android.libraries.places.widget.model.AutocompleteActivityMode
+import com.google.android.gms.maps.model.LatLng
 import com.google.firebase.Timestamp
+import com.google.firebase.firestore.GeoPoint
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
@@ -204,6 +220,25 @@ private fun GameTab(navController: NavController,
                     ),
                     maxLines = 5
                 )
+            }
+
+            item {
+                // Location Picker
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 8.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Select Event Location",
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = Black
+                    )
+                    PlacePickerButton(vm)
+                }
             }
 
             item {
@@ -909,3 +944,80 @@ private fun AddTask(
         }
     }
 }
+
+@Composable
+private fun PlacePickerButton(vm: CreateGameViewModel) {
+    val context = LocalContext.current
+
+    // Initialize Places
+    LaunchedEffect(Unit) {
+        if (!Places.isInitialized()) {
+            Places.initialize(context.applicationContext, BuildConfig.MAPS_API_KEY)
+        }
+    }
+
+    val fields = listOf(Place.Field.ID,
+        Place.Field.NAME,
+        Place.Field.LAT_LNG,
+        Place.Field.ADDRESS
+    )
+
+    val launcher = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+        if (result.resultCode == Activity.RESULT_OK) {
+            val data: Intent? = result.data
+            try {
+                val place = Autocomplete.getPlaceFromIntent(data!!)
+                val latLng = place.latLng
+                if (latLng != null) {
+                    // convert to Firestore GeoPoint and update VM
+                    val geo = GeoPoint(latLng.latitude, latLng.longitude)
+                    vm.updateLocation(geo)
+                }
+            } catch (e: Exception) {
+            }
+        }
+    }
+
+    Button(
+        onClick = {
+            val intent = Autocomplete.IntentBuilder(AutocompleteActivityMode.FULLSCREEN, fields)
+                .build(context)
+            launcher.launch(intent)
+        },
+        shape = RoundedCornerShape(8.dp),
+        colors = ButtonDefaults.buttonColors(
+            containerColor = Maroon,
+            contentColor = White
+        ),
+        modifier = Modifier.height(30.dp)
+    ) {
+        Icon(
+            imageVector = Icons.Default.Search,
+            contentDescription = "Select Location",
+            tint = White,
+            modifier = Modifier.size(25.dp)
+        )
+    }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

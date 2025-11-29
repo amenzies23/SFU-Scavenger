@@ -159,7 +159,8 @@ class GameRepository(
             "description" to game.description,
             "joinMode" to game.joinMode,
             "updatedAt" to Timestamp.now(),
-            "startTime" to game.startTime
+            "startTime" to game.startTime,
+            "location" to game.location,
         )
 
         gamesCollection.document(game.id).update(updates).await()
