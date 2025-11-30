@@ -84,97 +84,114 @@ fun ResultsScreen(
             .background(background),
         color = Color.Transparent
     ) {
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(top = 24.dp),
-            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            item {
-                ResultsTopBar(
-                    title = gameName ?: "Game summary",
-                    onBack = { navController.popBackStack() }
-                )
-            }
-
-            item {
-                InfoCard {
-                    Text(
-                        text = "Game ID: $gameId",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Text(
-                        text = "Team: ${teamId?.takeIf { it != "none" } ?: "Not assigned"}",
-                        color = Maroon
-                    )
-                    Text(text = "Placement: ${placement ?: "N/A"}")
-                    Text(text = "Score: ${score?.let { "$it pts" } ?: "N/A"}")
-                }
-            }
-
-            item { 
-                SectionTitle(if (teamId != null && teamId != "none") "Team members" else "Player") 
-            }
-            
-            item {
-                InfoCard {
-                    if (teamMembers.isEmpty()) {
-                        Text(
-                            text = "No members found",
-                            style = MaterialTheme.typography.bodyMedium
+        Column(modifier = Modifier.fillMaxSize()) {
+            Box(modifier = Modifier.weight(1f)) {
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(top = 24.dp),
+                    contentPadding = PaddingValues(
+                        start = 16.dp, 
+                        end = 16.dp, 
+                        top = 16.dp, 
+                        bottom = 80.dp // Space for the fixed button area
+                    ),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    item {
+                        ResultsTopBar(
+                            title = gameName ?: "Game summary",
+                            onBack = { navController.popBackStack() }
                         )
-                    } else {
-                        Column(
-                            verticalArrangement = Arrangement.spacedBy(12.dp)
-                        ) {
-                            teamMembers.forEach { user ->
-                                TeamMemberRow(user = user)
+                    }
+
+                    item {
+                        InfoCard {
+                            Text(
+                                text = "Game ID: $gameId",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Text(
+                                text = "Team: ${teamId?.takeIf { it != "none" } ?: "Not assigned"}",
+                                color = Maroon
+                            )
+                            Text(text = "Placement: ${placement ?: "N/A"}")
+                            Text(text = "Score: ${score?.let { "$it pts" } ?: "N/A"}")
+                        }
+                    }
+
+                    item { 
+                        SectionTitle(if (teamId != null && teamId != "none") "Team members" else "Player") 
+                    }
+                    
+                    item {
+                        InfoCard {
+                            if (teamMembers.isEmpty()) {
+                                Text(
+                                    text = "No members found",
+                                    style = MaterialTheme.typography.bodyMedium
+                                )
+                            } else {
+                                Column(
+                                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                                ) {
+                                    teamMembers.forEach { user ->
+                                        TeamMemberRow(user = user)
+                                    }
+                                }
                             }
                         }
+                    }
+
+                    item { SectionTitle("Task progress") }
+                    item {
+                        InfoCard {
+                            Text(
+                                text = "No tasks completed yet.",
+                                style = MaterialTheme.typography.bodyMedium
+                            )
+                        }
+                    }
+
+                    item { SectionTitle("Notes") }
+                    item {
+                        InfoCard {
+                            Text(
+                                text = "No additional notes.",
+                                style = MaterialTheme.typography.bodyMedium
+                            )
+                        }
+                    }
+
+                    item {
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Button(
+                            onClick = { navController.navigate("placement/$gameId") },
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = Maroon,
+                                contentColor = Color.White
+                            )
+                        ) {
+                            Text("View Leaderboard")
+                        }
+                        Spacer(modifier = Modifier.height(8.dp))
                     }
                 }
             }
 
-            item { SectionTitle("Task progress") }
-            item {
-                InfoCard {
-                    Text(
-                        text = "No tasks completed yet.",
-                        style = MaterialTheme.typography.bodyMedium
-                    )
-                }
-            }
-
-            item { SectionTitle("Notes") }
-            item {
-                InfoCard {
-                    Text(
-                        text = "No additional notes.",
-                        style = MaterialTheme.typography.bodyMedium
-                    )
-                }
-            }
-
-            item {
-                Spacer(modifier = Modifier.height(12.dp))
-                Button(
-                    onClick = { navController.navigate("placement/$gameId") },
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = Maroon,
-                        contentColor = Color.White
-                    )
-                ) {
-                    Text("View Leaderboard")
-                }
-                
-                Spacer(modifier = Modifier.height(8.dp))
-                
+            // Fixed bottom section
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth(),
+                color = Color.Transparent // Transparent so background shows through, or set a color
+            ) {
                 Button(
                     onClick = { navController.popBackStack() },
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
                     colors = ButtonDefaults.buttonColors(
                         containerColor = Color.Transparent,
                         contentColor = Maroon

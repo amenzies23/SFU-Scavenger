@@ -389,7 +389,7 @@ fun PodiumItem(
                 style = MaterialTheme.typography.bodyMedium,
                 modifier = Modifier
                     .align(Alignment.TopCenter)
-                    .padding(top = if (user.isTeam) 64.dp else 24.dp)
+                    .padding(top = if (user.isTeam) 64.dp else (24.dp))
             )
         }
     }
@@ -400,10 +400,12 @@ fun LeaderboardItem(user: PlacementUser) {
     Surface(
         modifier = Modifier
             .fillMaxWidth()
-            .height(72.dp),
-        shape = RoundedCornerShape(24.dp),
-        shadowElevation = 10.dp,
-        color = Color(0xFFF3ECE7)
+            .height(72.dp)
+            .padding(vertical = 6.dp),
+        shape = RoundedCornerShape(16.dp),
+        shadowElevation = 12.dp,
+        color = Color(0xFFF3ECE7),
+        border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.5f))
     ) {
         Row(
             modifier = Modifier
@@ -411,38 +413,26 @@ fun LeaderboardItem(user: PlacementUser) {
                 .padding(horizontal = 16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            if (!user.isTeam) {
-                AsyncImage(
-                    model = user.photoUrl,
-                    contentDescription = user.name,
-                    modifier = Modifier
-                        .size(48.dp)
-                        .clip(CircleShape)
-                        .background(Color.LightGray),
-                    contentScale = ContentScale.Crop
-                )
-                Spacer(modifier = Modifier.width(16.dp))
-            } else {
-                Box(
-                    modifier = Modifier
-                        .size(40.dp)
-                        .clip(CircleShape)
-                        .background(Color.Transparent),
-                    contentAlignment = Alignment.Center
-                ) {
-                }
-                Spacer(modifier = Modifier.width(16.dp))
-            }
+            // Rank number
+            Text(
+                text = "${user.placement}.",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = Color.Black,
+                modifier = Modifier.width(40.dp),
+                textAlign = TextAlign.Center
+            )
+            Spacer(modifier = Modifier.width(12.dp))
             
             Text(
                 text = user.name,
-                style = MaterialTheme.typography.titleLarge,
+                style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
                 modifier = Modifier.weight(1f)
             )
             
             Text(
-                text = "${user.score} pts",
+                text = "${user.score} ${if (user.score == 1) "pt" else "pts"}",
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
                 color = Maroon
