@@ -15,15 +15,39 @@ import com.google.firebase.firestore.SetOptions
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
-
+import com.google.firebase.firestore.Source
+import com.aark.sfuscavenger.data.models.TeamPlacement
 
 class TeamRepository(
     private val db: FirebaseFirestore = FirebaseFirestore.getInstance(),
     private val auth: FirebaseAuth = FirebaseAuth.getInstance()
 ) {
-
     companion object {
         private const val TAG = "TeamRepository"
+    }
+
+    /**
+     * Fetch all teams for a game directly from /games/{gameId}/teams
+     */
+    suspend fun getTeams(gameId: String): List<Team> {
+        Log.d(TAG, "getTeams: Attempting to fetch from SERVER")
+        
+        val snapshot = db.collection("games")
+            .document(gameId)
+            .collection("teams")
+            .get(Source.SERVER)
+            .await()
+            
+        Log.d(TAG, "getTeams: Fetched ${snapshot.size()} documents")
+        
+        return snapshot.documents.mapNotNull { doc ->
+            try {
+                doc.toObject(Team::class.java)?.copy(id = doc.id)
+            } catch (e: Exception) {
+                Log.e(TAG, "Error converting team document: ${doc.id}", e)
+                null
+            }
+        }
     }
 
     suspend fun getUserTeamId(gameId: String): String? {
