@@ -96,6 +96,13 @@ class CreateGameViewModel(
                     return@launch
                 }
 
+                // Require location when creating a new game
+                if (currentGame.location == null) {
+                    _error.value = "Please select a location for the game"
+                    _loading.value = false
+                    return@launch
+                }
+
                 if (isEditMode) {
                     // Update existing game
                     gameRepo.updateGame(currentGame)
@@ -103,8 +110,8 @@ class CreateGameViewModel(
                     // Create new game
                     gameRepo.createGame(
                         name = currentGame.name,
-                        lat = currentGame.location?.latitude ?: 49.2827,
-                        lng = currentGame.location?.longitude ?: -123.1207,
+                        lat = currentGame.location.latitude,
+                        lng = currentGame.location.longitude,
                         joinMode = currentGame.joinMode,
                         joinCode = currentGame.joinCode?.ifBlank { null },
                         description = currentGame.description,

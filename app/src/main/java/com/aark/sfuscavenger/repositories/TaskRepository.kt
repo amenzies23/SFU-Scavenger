@@ -67,7 +67,8 @@ class TaskRepository(
         val newTask = task.copy(
             id = docRef.id,
             createdAt = Timestamp.now(),
-            updatedAt = Timestamp.now()
+            updatedAt = Timestamp.now(),
+            value = if (task.type == "qr") docRef.id else task.value
         )
 
         docRef.set(newTask).await()

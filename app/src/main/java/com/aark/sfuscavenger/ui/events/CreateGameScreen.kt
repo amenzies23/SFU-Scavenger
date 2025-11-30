@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -60,15 +61,19 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.font.FontWeight.Companion.Bold
 import androidx.compose.ui.text.style.TextDecoration.Companion.Underline
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.aark.sfuscavenger.BuildConfig
 import com.aark.sfuscavenger.data.models.Task
+import com.aark.sfuscavenger.ui.theme.AppColors
 import com.aark.sfuscavenger.ui.theme.Beige
 import com.aark.sfuscavenger.ui.theme.Black
 import com.aark.sfuscavenger.ui.theme.DarkOrange
@@ -187,7 +192,7 @@ private fun GameTab(navController: NavController,
                 TextField(
                     value = game.value.name,
                     onValueChange = { vm.updateName(it) },
-                    label = { Text("Game Name", color = Maroon, fontWeight = Bold) },
+                    label = { Text("Game Name*", color = Maroon, fontWeight = Bold) },
                     placeholder = { Text("Enter game name") },
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(8.dp),
@@ -232,7 +237,10 @@ private fun GameTab(navController: NavController,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = "Select Event Location",
+                        text = buildAnnotatedString {
+                            append("Select Event Location")
+                            withStyle(style = SpanStyle(color = Maroon)) { append("*") }
+                        },
                         fontSize = 16.sp,
                         fontWeight = FontWeight.Medium,
                         color = Black
@@ -518,7 +526,7 @@ private fun TaskCard(
             TextField(
                 value = name,
                 onValueChange = { name = it },
-                label = { Text("Task Name", color = Maroon, fontWeight = Bold) },
+                label = { Text("Task Name*", color = Maroon, fontWeight = Bold) },
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(8.dp),
                 colors = TextFieldDefaults.colors(
@@ -891,7 +899,7 @@ private fun AddTask(
             TextField(
                 value = name,
                 onValueChange = { name = it },
-                label = { Text("Task Name", color = Maroon, fontWeight = Bold) },
+                label = { Text("Task Name*", color = Maroon, fontWeight = Bold) },
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(8.dp),
                 colors = TextFieldDefaults.colors(
@@ -1062,7 +1070,14 @@ private fun PlacePickerButton(vm: CreateGameViewModel) {
     }
 }
 
-
+@Composable
+private fun RequiredLabel(text: String, modifier: Modifier = Modifier) {
+    Row(modifier = modifier) {
+        Text(text = text, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+        Spacer(modifier = Modifier.width(6.dp))
+        Text(text = "*", color = Maroon, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+    }
+}
 
 
 
