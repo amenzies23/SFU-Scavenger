@@ -317,7 +317,7 @@ private fun ChatAvatar(
             modifier = modifier
                 .size(size)
                 .clip(CircleShape)
-                .background(Color(0xFFB0B0B0))//grey fallback (we might want to change this)
+                .background(Color.Red)
         )
     }
 }
