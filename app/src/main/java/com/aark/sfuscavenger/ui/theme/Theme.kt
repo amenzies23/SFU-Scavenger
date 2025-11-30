@@ -2,18 +2,20 @@ package com.aark.sfuscavenger.ui.theme
 
 import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
-
 
 private val DarkColorScheme = darkColorScheme(
     primary = Purple80,
@@ -38,17 +40,57 @@ private val LightColorScheme = lightColorScheme(
 )
 
 @Composable
-fun CustomText(
+fun ScavengerText(
     text: String,
     modifier: Modifier = Modifier,
     color: Color = Maroon,
-    style: TextStyle = MaterialTheme.typography.headlineMedium
+    style: TextStyle = MaterialTheme.typography.bodyLarge
 ) {
     Text(
         text = text,
         style = style,
         color = color,
         modifier = modifier
+    )
+}
+
+@Composable
+fun ScavengerLoader(
+    modifier: Modifier = Modifier,
+    color: Color = Maroon
+) {
+    CircularProgressIndicator(
+        modifier = modifier,
+        color = color
+    )
+}
+
+@Composable
+fun ScavengerDialog(
+    onDismissRequest: () -> Unit,
+    title: String? = null,
+    text: @Composable (() -> Unit)? = null,
+    confirmButton: @Composable () -> Unit,
+    dismissButton: @Composable (() -> Unit)? = null,
+    containerColor: Color = LightBeige,
+    titleContentColor: Color = Maroon
+) {
+    AlertDialog(
+        onDismissRequest = onDismissRequest,
+        title = title?.let {
+            {
+                Text(
+                    text = it,
+                    style = MaterialTheme.typography.titleLarge,
+                    color = titleContentColor
+                )
+            }
+        },
+        text = text,
+        confirmButton = confirmButton,
+        dismissButton = dismissButton,
+        containerColor = containerColor,
+        textContentColor = Color.Black
     )
 }
 

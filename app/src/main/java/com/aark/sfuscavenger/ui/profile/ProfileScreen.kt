@@ -58,6 +58,7 @@ import coil.compose.AsyncImage
 import com.aark.sfuscavenger.data.models.Friend
 import com.aark.sfuscavenger.ui.login.AuthViewModel
 import com.aark.sfuscavenger.ui.theme.AppColors
+import com.aark.sfuscavenger.ui.theme.ScavengerDialog
 import com.aark.sfuscavenger.ui.theme.Maroon
 import com.aark.sfuscavenger.ui.theme.White
 import androidx.compose.ui.platform.LocalContext
@@ -317,15 +318,9 @@ fun ProfileSettingsDialog(
     }
 
     if (showImageSourceSelection) {
-        AlertDialog(
+        ScavengerDialog(
             onDismissRequest = { showImageSourceSelection = false },
-            title = { 
-                Text(
-                    "Choose Image Source",
-                    fontWeight = FontWeight.Bold,
-                    color = Color.Black
-                ) 
-            },
+            title = "Choose Image Source",
             text = {
                 Column(
                     verticalArrangement = Arrangement.spacedBy(12.dp)
@@ -372,14 +367,13 @@ fun ProfileSettingsDialog(
                 ) {
                     Text("Cancel")
                 }
-            },
-            containerColor = Color(0xFFFEFAF4),
-            shape = RoundedCornerShape(28.dp)
+            }
         )
     }
 
-    AlertDialog(
+    ScavengerDialog(
         onDismissRequest = onDismiss,
+        title = "Edit Profile",
         confirmButton = {
             Button(
                 onClick = {
@@ -410,15 +404,6 @@ fun ProfileSettingsDialog(
                 Text("Cancel")
             }
         },
-        title = { 
-            Text(
-                "Edit Profile",
-                fontWeight = FontWeight.Bold,
-                color = Color.Black
-            ) 
-        },
-        containerColor = Color(0xFFFEFAF4),
-        shape = RoundedCornerShape(28.dp),
         text = {
             Column(
                 modifier = Modifier
@@ -690,15 +675,9 @@ private fun AddFriendDialogContent(
     onDismiss: () -> Unit,
     onClearError: () -> Unit
 ) {
-    AlertDialog(
+    ScavengerDialog(
             onDismissRequest = onDismiss,
-            title = { 
-                Text(
-                    "Add Friend by Username",
-                    fontWeight = FontWeight.Bold,
-                    color = Color.Black
-                ) 
-            },
+            title = "Add Friend by Username",
             text = {
                 Column(
                     verticalArrangement = Arrangement.spacedBy(8.dp)
@@ -790,9 +769,7 @@ private fun AddFriendDialogContent(
                 ) {
                     Text("Cancel")
                 }
-            },
-            containerColor = Color(0xFFFEFAF4),
-            shape = RoundedCornerShape(28.dp)
+            }
         )
 }
 

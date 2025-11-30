@@ -39,6 +39,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import com.aark.sfuscavenger.ui.theme.Beige
+import com.aark.sfuscavenger.ui.theme.ScavengerLoader
 import com.aark.sfuscavenger.ui.theme.Maroon
 import kotlin.math.roundToInt
 
@@ -103,7 +104,7 @@ fun ChatScreen(
                     modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center
                 ) {
-                    CircularProgressIndicator()
+                    ScavengerLoader()
                 }
             } else {
                 LazyColumn(

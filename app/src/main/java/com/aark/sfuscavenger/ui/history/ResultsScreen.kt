@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -24,7 +25,7 @@ import com.aark.sfuscavenger.repositories.TeamRepository
 import com.aark.sfuscavenger.repositories.UserRepository
 import com.google.firebase.auth.FirebaseAuth
 import com.aark.sfuscavenger.ui.theme.Maroon
-import com.aark.sfuscavenger.ui.theme.CustomText
+import com.aark.sfuscavenger.ui.theme.ScavengerText
 
 @Composable
 fun ResultsScreen(
@@ -218,14 +219,15 @@ private fun ResultsTopBar(
     ) {
         IconButton(onClick = onBack) {
             Icon(
-                imageVector = Icons.Default.ArrowBack,
+                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                 contentDescription = "Back"
             )
         }
-        CustomText(
+        ScavengerText(
             text = title,
             style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
-            modifier = Modifier.padding(start = 8.dp)
+            modifier = Modifier.padding(start = 8.dp),
+            color = Color.Black
         )
     }
 }
@@ -250,7 +252,7 @@ private fun InfoCard(content: @Composable () -> Unit) {
 
 @Composable
 private fun SectionTitle(text: String) {
-    CustomText(
+    ScavengerText(
         text = text,
         style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold)
     )
@@ -276,6 +278,6 @@ private fun TeamMemberRow(user: User) {
                 )
             }
         }
-        CustomText("Level ${user.level}")
+        ScavengerText("Level ${user.level}")
     }
 }

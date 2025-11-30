@@ -48,6 +48,9 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.sp
 import com.google.firebase.storage.FirebaseStorage
 import kotlinx.coroutines.tasks.await
+import com.aark.sfuscavenger.ui.theme.ScavengerLoader
+import com.aark.sfuscavenger.ui.theme.ScavengerDialog
+import com.aark.sfuscavenger.ui.theme.Maroon
 
 @Composable
 fun MapScreen(
@@ -179,7 +182,7 @@ fun MapScreen(
 
     // Loading indicator when UI is loading
     if (uiState.loading) {
-        CircularProgressIndicator()
+        ScavengerLoader()
     }
 
     // Detail dialog when a pin is clicked
@@ -203,15 +206,14 @@ private fun SubmissionDialog(
     imageError: String?,
     onDismiss: () -> Unit
 ) {
-    AlertDialog(
+    ScavengerDialog(
         onDismissRequest = onDismiss,
-        containerColor = Color(0xFFF3ECE7),
+        title = "Task submission",
         confirmButton = {
             TextButton(onClick = onDismiss) {
-                Text("Close", color = Color(0xFF7B1F1F))
+                Text("Close", color = Maroon)
             }
         },
-        title = { Text(text = "Task submission") },
         text = {
             Column {
                 // Task info
@@ -220,7 +222,7 @@ private fun SubmissionDialog(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        CircularProgressIndicator(modifier = Modifier.size(16.dp))
+                        ScavengerLoader(modifier = Modifier.size(16.dp))
                         Text("Loading task details…")
                     }
                 } else {
@@ -289,7 +291,7 @@ private fun SubmissionPhotoPreview(
         when {
             imageUrl == null && error == null -> {
                 // still loading
-                CircularProgressIndicator(modifier = Modifier.size(32.dp))
+                ScavengerLoader(modifier = Modifier.size(32.dp))
             }
             error != null -> {
                 Text(
