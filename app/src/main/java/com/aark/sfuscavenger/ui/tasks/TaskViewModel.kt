@@ -392,7 +392,9 @@ class TaskViewModel(
                     .await()
 
                 val points = taskDoc.getLong("points")?.toInt() ?: 0
-
+                
+                // Calculate User XP (half of task points, rounded up)
+                val xpToAward = kotlin.math.ceil(points / 2.0).toInt()
 
                 // Update submission
                 db.collection("games")
@@ -410,6 +412,9 @@ class TaskViewModel(
                         )
                     )
                     .await()
+                
+                val userRepository = com.aark.sfuscavenger.repositories.UserRepository()
+                userRepository.addXpToUser(submission.submitterId, gameId, xpToAward)
 
             } catch (e: Exception) {
                 _state.update { it.copy(error = e.message) }

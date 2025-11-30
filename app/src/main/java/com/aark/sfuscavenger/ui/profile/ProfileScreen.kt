@@ -201,7 +201,7 @@ fun ProfileInformation(profileState: ProfileState) {
                 modifier = Modifier.fillMaxWidth()
             ) {
                 // Calculate progress based on XP
-                val maxXP = 50 // TODO: Implement it to make it increase with level
+                val maxXP = profileState.xpForNextLevel
                 val progress = (profileState.totalXP.toFloat() / maxXP).coerceIn(0f, 1f)
                 
                 // Custom progress bar
@@ -217,19 +217,28 @@ fun ProfileInformation(profileState: ProfileState) {
                             shape = RoundedCornerShape(16.dp)
                         )
                 ) {
-                    // Filled portion based on progress
                     Box(
                         modifier = Modifier
                             .fillMaxWidth(progress)
                             .fillMaxSize()
-                            .background(Color(0xFFFEFAF4))
+                            .background(Maroon)
                             .clip(RoundedCornerShape(16.dp))
+                    )
+                    
+                    // Text showing XP / Max XP (centered in bar for visibility)
+                    Text(
+                        text = "${profileState.totalXP} / ${maxXP} xp",
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = if (progress > 0.5f) White else Color.Black,
+                        modifier = Modifier.align(Alignment.Center)
                     )
                 }
                 
-                // XP text at bottom right
+                // Remove the old text below the bar since it's now inside
+                /*
                 Text(
-                    text = "${profileState.totalXP} / 50xp",
+                    text = "${profileState.totalXP} / ${maxXP}xp",
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Normal,
                     color = Color.Black,
@@ -238,6 +247,7 @@ fun ProfileInformation(profileState: ProfileState) {
                         .padding(top = 22.dp)
                         .padding(bottom = 12.dp)
                 )
+                */
             }
         }
     }

@@ -28,6 +28,7 @@ data class ProfileState(
     val username: String = "",
     val userLevel: Int = 0,
     val totalXP: Int = 0, // total XP for each specific level
+    val xpForNextLevel: Int = 50,
     val friends: List<Friend> = emptyList(),
     val addFriendError: String? = null 
 )
@@ -53,13 +54,17 @@ class ProfileViewModel(
     fun refreshProfile() = launchScoped {
         val user = repository.fetchUser()
         val friends = repository.fetchFriends()
+        val level = user?.level ?: 1
+        val nextLevelXp = repository.calculateLevelRequirement(level)
+
         _state.update {
             it.copy(
                 profilePicture = user?.photoUrl,
                 displayName = user?.displayName.orEmpty(),
                 username = user?.username.orEmpty(),
-                userLevel = user?.level ?: 1,
+                userLevel = level,
                 totalXP = user?.xp ?: 0,
+                xpForNextLevel = nextLevelXp,
                 friends = friends
             )
         }
