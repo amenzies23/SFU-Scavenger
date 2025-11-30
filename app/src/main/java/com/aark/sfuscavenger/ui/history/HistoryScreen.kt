@@ -53,6 +53,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import androidx.navigation.compose.currentBackStackEntryAsState
+import com.aark.sfuscavenger.ui.theme.CustomText
 import com.aark.sfuscavenger.ui.theme.LightBeige
 import com.aark.sfuscavenger.ui.theme.Maroon
 
@@ -123,11 +124,9 @@ private fun HistoryHeader(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(
+            CustomText(
                 text = "Previous Games",
-                color = Maroon,
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.Bold
+                style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold)
             )
             IconButton(onClick = { showSearchBar = !showSearchBar }) {
                 Icon(
@@ -376,10 +375,9 @@ private fun HistoryCardItem(
                 .padding(horizontal = 14.dp, vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(
+            CustomText(
                 text = card.title,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold,
+                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
                 modifier = Modifier.weight(1f)
             )
             Text(

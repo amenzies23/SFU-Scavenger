@@ -24,6 +24,7 @@ import com.aark.sfuscavenger.repositories.TeamRepository
 import com.aark.sfuscavenger.repositories.UserRepository
 import com.google.firebase.auth.FirebaseAuth
 import com.aark.sfuscavenger.ui.theme.Maroon
+import com.aark.sfuscavenger.ui.theme.CustomText
 
 @Composable
 fun ResultsScreen(
@@ -221,10 +222,9 @@ private fun ResultsTopBar(
                 contentDescription = "Back"
             )
         }
-        Text(
+        CustomText(
             text = title,
-            style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.Bold,
+            style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
             modifier = Modifier.padding(start = 8.dp)
         )
     }
@@ -250,11 +250,9 @@ private fun InfoCard(content: @Composable () -> Unit) {
 
 @Composable
 private fun SectionTitle(text: String) {
-    Text(
+    CustomText(
         text = text,
-        style = MaterialTheme.typography.titleMedium,
-        fontWeight = FontWeight.SemiBold,
-        color = Maroon
+        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold)
     )
 }
 
@@ -278,10 +276,6 @@ private fun TeamMemberRow(user: User) {
                 )
             }
         }
-        Text(
-            text = "Level ${user.level}",
-            style = MaterialTheme.typography.bodyMedium,
-            color = Maroon
-        )
+        CustomText("Level ${user.level}")
     }
 }
