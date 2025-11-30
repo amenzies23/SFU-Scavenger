@@ -29,22 +29,23 @@ import com.aark.sfuscavenger.ui.theme.Maroon
 fun ResultsScreen(
     navController: NavController,
     gameId: String,
-    teamId: String?
+    teamId: String?,
+    onBackToHome: () -> Unit = {}
 ) {
     val gameRepository = remember { GameRepository() }
     val teamRepository = remember { TeamRepository() }
     val userRepository = remember { UserRepository() }
     val auth = remember { FirebaseAuth.getInstance() }
-    
+
     var gameName by remember { mutableStateOf<String?>(null) }
     var placement by remember { mutableStateOf<String?>(null) }
     var score by remember { mutableStateOf<Int?>(null) }
     var teamMembers by remember { mutableStateOf<List<User>>(emptyList()) }
-    
+
     LaunchedEffect(gameId, teamId) {
         val game = gameRepository.getGame(gameId)
         gameName = game?.name?.ifBlank { "Untitled Game" }
-        
+
         if (teamId != null && teamId != "none") {
             val teamSummary = teamRepository.getTeamSummary(gameId, teamId)
             val placementInt = teamSummary?.placement ?: 0
@@ -73,7 +74,7 @@ fun ResultsScreen(
             }
         }
     }
-    
+
     val background = Brush.verticalGradient(
         listOf(Color(0xFFF7F1EA), Color(0xFFF1E5DB))
     )
@@ -198,7 +199,7 @@ fun ResultsScreen(
                     ),
                     border = BorderStroke(1.dp, Maroon)
                 ) {
-                    Text("Back to history")
+                    Text("Back to Home")
                 }
             }
         }

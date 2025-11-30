@@ -20,7 +20,8 @@ import kotlinx.coroutines.tasks.await
 data class LobbyTeamUi(
     val id: String,
     val name: String,
-    val members: List<String> = emptyList()
+    val members: List<String> = emptyList(),
+    val memberPhotos: List<String?> = emptyList()
 )
 
 data class LobbyUiState(
@@ -135,16 +136,29 @@ class LobbyViewModel(
                 val reg = teamRepo.listenToTeamMembers(gameId, team.id) { members ->
 
                     viewModelScope.launch {
-                        val memberNames = members.map { member ->
+                        val memberNames = mutableListOf<String>()
+                        val memberPhotos = mutableListOf<String?>()
+
+                        for (member in members) {
                             val userDoc = usersCollection.document(member.userId).get().await()
-                            userDoc.getString("displayName")
+                            val name = userDoc.getString("displayName")
                                 ?: userDoc.getString("email")
                                 ?: "Player"
+
+                            val photo = userDoc.getString("photoUrl")
+
+                            memberNames.add(name)
+                            memberPhotos.add(photo)
                         }
+
 
                         _state.update { old ->
                             val updatedTeams = old.teams.map {
-                                if (it.id == team.id) it.copy(members = memberNames)
+                                if (it.id == team.id)
+                                    it.copy(
+                                        members = memberNames,
+                                        memberPhotos = memberPhotos
+                                    )
                                 else it
                             }
                             old.copy(teams = updatedTeams)
