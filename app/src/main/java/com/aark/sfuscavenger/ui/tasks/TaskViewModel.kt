@@ -1,5 +1,9 @@
 package com.aark.sfuscavenger.ui.tasks
 
+import android.Manifest
+import android.content.Context
+import android.content.pm.PackageManager
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.aark.sfuscavenger.data.models.Game
@@ -9,13 +13,23 @@ import com.aark.sfuscavenger.data.models.Team
 import com.google.firebase.Timestamp
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.GeoPoint
 import com.google.firebase.firestore.ListenerRegistration
+import com.google.firebase.firestore.Query
+import com.google.firebase.storage.FirebaseStorage
+import com.google.firebase.storage.StorageMetadata
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
+import android.location.Location
+import android.location.LocationListener
+import android.location.LocationManager
+import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlin.coroutines.resume
+
 
 // UI models used by the Task screen
 data class TaskUi(
@@ -37,8 +51,10 @@ data class SubmissionUi(
     val teamName: String,
     val submitterId: String,
     val submitterName: String,
+    val submitterPhotoUrl: String?,
     val type: String,
     val textAnswer: String? = null,
+    val photoUrl: String? = null,
     val status: String
 )
 
@@ -52,6 +68,7 @@ data class TaskUiState(
     // Player view
     val tasks: List<TaskUi> = emptyList(),
     val completedCount: Int = 0,
+    val teamScore: Int = 0,
 
     // Host view
     val pendingSubmissions: List<SubmissionUi> = emptyList()
@@ -59,7 +76,8 @@ data class TaskUiState(
 
 class TaskViewModel(
     private val db: FirebaseFirestore = FirebaseFirestore.getInstance(),
-    private val auth: FirebaseAuth = FirebaseAuth.getInstance()
+    private val auth: FirebaseAuth = FirebaseAuth.getInstance(),
+    private val storage: FirebaseStorage = FirebaseStorage.getInstance()
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(TaskUiState())
@@ -85,7 +103,6 @@ class TaskViewModel(
 
                 _state.update { it.copy(isHost = isHost) }
 
-
                 if (isHost) {
                     // Hosts watch all submissions from all teams
                     observeAllSubmissions(gameId)
@@ -94,7 +111,25 @@ class TaskViewModel(
                     val teamId = findUserTeam(gameId, uid)
                     _state.update { it.copy(teamId = teamId) }
                     if (teamId != null) {
+
+                        if (!isHost && teamId != null) {
+                            // Get current team score
+                            val teamSnap = db.collection("games")
+                                .document(gameId)
+                                .collection("teams")
+                                .document(teamId)
+                                .get()
+                                .await()
+
+                            val score = teamSnap.getLong("score")?.toInt() ?: 0
+                            _state.update { it.copy(teamScore = score) }
+
+                            // Start watching the team doc for live score updates
+                            observeTeamScore(gameId, teamId)
+                        }
+
                         observeTasksAndSubmissions(gameId, teamId)
+
                     } else {
                         _state.update {
                             // If not on a team, player can't play the game
@@ -108,7 +143,6 @@ class TaskViewModel(
             }
         }
     }
-
 
     /**
      * Finds which team the user belongs to for this game
@@ -191,6 +225,7 @@ class TaskViewModel(
                     .collection("teams")
                     .document(teamId)
                     .collection("submissions")
+                    .orderBy("createdAt", Query.Direction.DESCENDING)
                     .get()
                     .await()
 
@@ -199,7 +234,12 @@ class TaskViewModel(
                 }
 
                 // Map taskId to submission status
-                val taskStatusMap = submissions.associate { it.taskId to it.status }
+                // get the most recent submission per taskId
+                val taskStatusMap = submissions
+                    .groupBy { it.taskId }
+                    .mapValues { (_, list) ->
+                        list.maxByOrNull { it.createdAt?.seconds ?: 0 }!!.status
+                    }
 
                 val taskUiList = tasks.map { task ->
                     val status = taskStatusMap[task.id]
@@ -230,16 +270,64 @@ class TaskViewModel(
     }
 
     /**
-     * Player
-     * Submits text answer
+     * Helper function to get current location
      */
-    fun submitTextAnswer(taskId: String, answer: String) {
+    private suspend fun getCurrentLocation(context: Context): GeoPoint? {
+        return try {
+            val hasPermission = ContextCompat.checkSelfPermission(
+                context,
+                Manifest.permission.ACCESS_FINE_LOCATION
+            ) == PackageManager.PERMISSION_GRANTED
+            if (!hasPermission) return null
+
+            val locationManager =
+                context.getSystemService(Context.LOCATION_SERVICE) as LocationManager
+
+            // Try last known location first
+            val last=locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER)
+            if (last != null) {
+                return GeoPoint(last.latitude, last.longitude)
+            }
+
+            // Otherwise request new GPS fix
+            suspendCancellableCoroutine { cont ->
+                val listener = object : LocationListener {
+                    override fun onLocationChanged(loc: Location) {
+                        cont.resume(GeoPoint(loc.latitude, loc.longitude))
+                        locationManager.removeUpdates(this)
+                    }
+                }
+
+                locationManager.requestLocationUpdates(
+                    LocationManager.GPS_PROVIDER,
+                    0L,
+                    0f,
+                    listener
+                )
+
+                cont.invokeOnCancellation {
+                    locationManager.removeUpdates(listener)
+                }
+            }
+
+        } catch (e: Exception) {
+            null
+        }
+    }
+
+    /**
+     * Player
+     * Submits text answer with geolocation
+     */
+    fun submitTextAnswer(taskId: String, answer: String, context: Context) {
         val gameId = _state.value.gameId ?: return
         val teamId = _state.value.teamId ?: return
         val uid = auth.currentUser?.uid ?: return
 
         viewModelScope.launch {
             try {
+                val geoPoint = getCurrentLocation(context)
+
                 val submission = hashMapOf(
                     "taskId" to taskId,
                     "userId" to uid,
@@ -249,6 +337,11 @@ class TaskViewModel(
                     "createdAt" to Timestamp.now(),
                     "scoreAwarded" to 0
                 )
+
+                // Add geo location if available
+                if (geoPoint != null) {
+                    submission["geo"] = geoPoint
+                }
 
                 db.collection("games")
                     .document(gameId)
@@ -263,6 +356,54 @@ class TaskViewModel(
             }
         }
     }
+
+    /**
+     * Player
+     * Submits photo answer with geolocation
+     */
+    fun submitPhotoAnswer(taskId: String, imageData: ByteArray, context: Context) {
+        val gameId = _state.value.gameId ?: return
+        val teamId = _state.value.teamId ?: return
+        val uid = auth.currentUser?.uid ?: return
+
+        viewModelScope.launch {
+            try {
+                val teamSubmissionsRef = db.collection("games")
+                    .document(gameId)
+                    .collection("teams")
+                    .document(teamId)
+                    .collection("submissions")
+
+                val submissionDocRef = teamSubmissionsRef.document()
+                val submissionId = submissionDocRef.id
+                val storagePath = "submissions/$submissionId/image.jpg"
+                val storageRef = storage.reference.child(storagePath)
+                val metadata = StorageMetadata.Builder()
+                    .setContentType("image/jpeg")
+                    .build()
+                storageRef.putBytes(imageData, metadata).await()
+                val geoPoint = getCurrentLocation(context)
+                val submission = hashMapOf(
+                    "taskId" to taskId,
+                    "userId" to uid,
+                    "type" to "photo",
+                    "status" to "pending",
+                    "mediaStoragePath" to storagePath,
+                    "createdAt" to Timestamp.now(),
+                    "scoreAwarded" to 0
+                )
+
+                if (geoPoint != null) {
+                    submission["geo"] = geoPoint
+                }
+
+                submissionDocRef.set(submission).await()
+            } catch (e: Exception) {
+                _state.update { it.copy(error = "Failed to submit photo: ${e.message}") }
+            }
+        }
+    }
+
 
     /**
      * Host; Observe all submissions
@@ -292,7 +433,7 @@ class TaskViewModel(
                     doc.id to (doc.toObject(Task::class.java)?.name ?: "Unknown Task")
                 }
 
-                // Listen to each team's submissions
+                // Listen to each teams submissions
                 for (team in teams) {
                     val listener = db.collection("games")
                         .document(gameId)
@@ -340,7 +481,6 @@ class TaskViewModel(
                 .get()
                 .await()
 
-
             for (doc in subsSnap.documents) {
                 val sub = doc.toObject(Submission::class.java)?.copy(id = doc.id) ?: continue
 
@@ -349,17 +489,21 @@ class TaskViewModel(
                     ?: userDoc.getString("email")
                     ?: "Unknown"
 
+                val submitterPhoto = userDoc.getString("photoUrl")  // Fetch pfp
+
                 allSubmissions.add(
                     SubmissionUi(
                         id = sub.id,
                         taskId = sub.taskId,
-                        taskName = taskMap[sub.taskId] ?:"Unknown Task",
+                        taskName = taskMap[sub.taskId] ?: "Unknown Task",
                         teamId = team.id,
                         teamName = team.name,
                         submitterId = sub.userId,
                         submitterName = submitterName,
+                        submitterPhotoUrl = submitterPhoto,
                         type = sub.type,
                         textAnswer = sub.text,
+                        photoUrl = sub.mediaStoragePath,
                         status = sub.status
                     )
                 )
@@ -383,9 +527,8 @@ class TaskViewModel(
 
         viewModelScope.launch {
             try {
-                // Get task points
-                val taskDoc = db.collection("games")
-                    .document(gameId)
+                val gameRef = db.collection("games").document(gameId)
+                val taskRef = gameRef
                     .collection("tasks")
                     .document(submission.taskId)
                     .get()
@@ -399,15 +542,39 @@ class TaskViewModel(
                 // Update submission
                 db.collection("games")
                     .document(gameId)
+                val teamRef = gameRef
                     .collection("teams")
                     .document(submission.teamId)
+                val submissionRef = teamRef
                     .collection("submissions")
                     .document(submission.id)
-                    .update(
+
+                db.runTransaction { tx ->
+                    //  Read the submission
+                    val subSnap = tx.get(submissionRef)
+                    if (!subSnap.exists()) {
+                        throw IllegalStateException("Submission does not exist")
+                    }
+
+                    val currentStatus = subSnap.getString("status") ?: "pending"
+                    val alreadyAwarded = subSnap.getLong("scoreAwarded") ?: 0L
+
+                    // If its already approved or has points, dont award again
+                    if (currentStatus == "approved" || alreadyAwarded > 0L) {
+                        return@runTransaction null
+                    }
+
+                    // Read the task to get the point value
+                    val taskSnap = tx.get(taskRef)
+                    val points = (taskSnap.getLong("points") ?: 0L).toInt()
+
+                    // update the submission: mark approved + record score
+                    tx.update(
+                        submissionRef,
                         mapOf(
                             "status" to "approved",
                             "verifiedBy" to uid,
-                            "verifiedAt" to Timestamp.now(),
+                            "verifiedAt" to com.google.firebase.firestore.FieldValue.serverTimestamp(),
                             "scoreAwarded" to points
                         )
                     )
@@ -415,6 +582,18 @@ class TaskViewModel(
                 
                 val userRepository = com.aark.sfuscavenger.repositories.UserRepository()
                 userRepository.addXpToUser(submission.submitterId, gameId, xpToAward)
+
+                    // Update the team: increment score + latestSubmissionAt
+                    tx.update(
+                        teamRef,
+                        mapOf(
+                            "score" to com.google.firebase.firestore.FieldValue.increment(points.toLong()),
+                            "latestSubmissionAt" to com.google.firebase.firestore.FieldValue.serverTimestamp()
+                        )
+                    )
+
+                    null
+                }.await()
 
             } catch (e: Exception) {
                 _state.update { it.copy(error = e.message) }
@@ -447,6 +626,66 @@ class TaskViewModel(
                 _state.update { it.copy(error = e.message) }
             }
         }
+    }
+
+    /**
+     * Host: End the game
+     * Updates game status to "ended" and calculates team placements
+     */
+    fun endGame() {
+        val gameId = _state.value.gameId ?: return
+
+        viewModelScope.launch {
+            try {
+                // Get all teams and sort by score
+                val teamsSnap = db.collection("games")
+                    .document(gameId)
+                    .collection("teams")
+                    .get()
+                    .await()
+
+                val teams = teamsSnap.documents.mapNotNull { doc ->
+                    doc.toObject(Team::class.java)?.copy(id = doc.id)
+                }.sortedByDescending { it.score }
+
+                // Update each team with their placement
+                teams.forEachIndexed { index, team ->
+                    db.collection("games")
+                        .document(gameId)
+                        .collection("teams")
+                        .document(team.id)
+                        .update("placement", index + 1)
+                        .await()
+                }
+
+                // Update game status to "ended"
+                db.collection("games")
+                    .document(gameId)
+                    .update(
+                        mapOf(
+                            "status" to "ended",
+                            "endedAt" to Timestamp.now()
+                        )
+                    )
+                    .await()
+
+            } catch (e: Exception) {
+                _state.update { it.copy(error = "Failed to end game: ${e.message}") }
+            }
+        }
+    }
+
+    private fun observeTeamScore(gameId: String, teamId: String) {
+        db.collection("games")
+            .document(gameId)
+            .collection("teams")
+            .document(teamId)
+            .addSnapshotListener { snap, _ ->
+                if (snap != null && snap.exists()) {
+                    val score = snap.getLong("score")?.toInt() ?: 0
+                    _state.update { it.copy(teamScore = score) }
+                }
+            }
     }
 
     // Cleanup
