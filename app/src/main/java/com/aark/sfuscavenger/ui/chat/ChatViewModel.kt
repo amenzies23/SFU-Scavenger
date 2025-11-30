@@ -22,7 +22,8 @@ data class ChatMessageUi(
     val senderName: String,
     val senderLevel: Int,
     val isMine: Boolean,
-    val time: String
+    val time: String,
+    val senderPhotoUrl: String? = null,
 )
 
 data class ChatUiState(
@@ -92,7 +93,8 @@ class ChatViewModel(
                         senderName = user?.displayName ?: user?.email ?: "Unknown",
                         senderLevel = user?.level ?: 1,
                         isMine = (msg.senderId == currentUid),
-                        time = timeText
+                        time = timeText,
+                        senderPhotoUrl = user?.photoUrl,
                     )
                 }
 
