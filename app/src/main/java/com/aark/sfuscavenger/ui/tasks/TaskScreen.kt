@@ -41,7 +41,6 @@ import android.widget.Toast
 import androidx.core.content.FileProvider
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.background
-import androidx.compose.ui.text.intl.Locale
 import com.aark.sfuscavenger.qrcode.QRScanner
 import com.journeyapps.barcodescanner.ScanContract
 import com.journeyapps.barcodescanner.ScanOptions
@@ -151,24 +150,6 @@ fun TaskScreen(
     }
 
     selectedQRTask?.let { task ->
-//        val qrScannerLauncher = rememberLauncherForActivityResult(ScanContract()) { result ->
-//            if (result.contents != null) {
-//                vm.submitQRAnswer(task.id, result.contents, context)
-//                Toast.makeText(context, "QR code submitted!", Toast.LENGTH_SHORT).show()
-//            }
-//            selectedQRTask = null
-//        }
-//        LaunchedEffect(task) {
-//            val options = ScanOptions().apply {
-//                setPrompt("Scan the QR code for: ${task.name}")
-//                setBeepEnabled(false)
-//                setOrientationLocked(false)
-//                setCaptureActivity(QRScanner::class.java)
-//                setDesiredBarcodeFormats(ScanOptions.QR_CODE)
-//                setCameraId(0)
-//            }
-//            qrScannerLauncher.launch(options)
-//        }
         QRSubmissionDialog(
             task = task,
             onDismiss = { selectedQRTask = null },
@@ -607,7 +588,7 @@ private fun QRSubmissionDialog(
                             .height(120.dp),
                         contentAlignment = Alignment.Center
                     ) {
-                        Text("Press Scan to scan and submit the QR code", color = Color.Gray)
+                        Text("Scan and submit the correct QR code after figuring out the clue", color = Color.Gray)
                     }
                 }
             }

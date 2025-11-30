@@ -323,16 +323,30 @@ class TaskViewModel(
         val gameId = _state.value.gameId ?: return
         val teamId = _state.value.teamId ?: return
         val uid = auth.currentUser?.uid ?: return
+        var status = "approved"
 
         viewModelScope.launch {
             try {
+                val taskDoc = db.collection("games")
+                    .document(gameId)
+                    .collection("tasks")
+                    .document(taskId)
+                    .get()
+                    .await()
+
+                val task = taskDoc.toObject(Task::class.java)
+
+                if (answer != task?.value) {
+                    status = "pending"
+                }
+
                 val geoPoint = getCurrentLocation(context)
 
                 val submission = hashMapOf(
                     "taskId" to taskId,
                     "userId" to uid,
                     "type" to "text",
-                    "status" to "pending",
+                    "status" to status,
                     "text" to answer.trim(),
                     "createdAt" to Timestamp.now(),
                     "scoreAwarded" to 0
@@ -412,6 +426,7 @@ class TaskViewModel(
         val gameId = _state.value.gameId ?: return
         val teamId = _state.value.teamId ?: return
         val uid = auth.currentUser?.uid ?: return
+        var status = "approved"
 
         viewModelScope.launch {
             try {
@@ -424,9 +439,8 @@ class TaskViewModel(
 
                 val task = taskDoc.toObject(Task::class.java)
 
-                if (task?.value != scannedValue) {
-                    _state.update { it.copy(error = "Scanned QR code does not match the task") }
-                    return@launch
+                if (scannedValue != task?.value) {
+                    status = "rejected"
                 }
 
                 val geoPoint = getCurrentLocation(context)
@@ -435,7 +449,7 @@ class TaskViewModel(
                     "taskId" to taskId,
                     "userId" to uid,
                     "type" to "qr",
-                    "status" to "pending",
+                    "status" to status,
                     "text" to scannedValue,
                     "createdAt" to Timestamp.now(),
                     "scoreAwarded" to 0
