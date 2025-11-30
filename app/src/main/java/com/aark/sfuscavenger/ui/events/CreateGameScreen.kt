@@ -443,6 +443,7 @@ private fun TaskCard(
     var description by remember { mutableStateOf(task.description) }
     var points by remember { mutableStateOf(task.points.toString()) }
     var type by remember { mutableStateOf(task.type) }
+    var answer by remember { mutableStateOf(task.value ?: "") }
 
     Column(
         modifier = Modifier
@@ -473,6 +474,7 @@ private fun TaskCard(
                             description = task.description
                             points = task.points.toString()
                             type = task.type
+                            answer = task.value ?: ""
                             isEditing = false
                         }
                     ) {
@@ -480,12 +482,18 @@ private fun TaskCard(
                     }
                     TextButton(
                         onClick = {
+                            val finalValue = when (type) {
+                                "text" -> if (answer.isNotBlank()) answer else null
+                                "qr" -> task.id // Set to task ID for QR
+                                else -> null
+                            }
                             onSave(
                                 task.copy(
                                     name = name,
                                     description = description,
                                     points = points.toIntOrNull() ?: 0,
-                                    type = type
+                                    type = type,
+                                    value = finalValue
                                 )
                             )
                             isEditing = false
@@ -592,6 +600,10 @@ private fun TaskCard(
                                 text = { Text(taskType.uppercase()) },
                                 onClick = {
                                     type = taskType
+                                    // Clear answer when switching away from text
+                                    if (taskType != "text") {
+                                        answer = ""
+                                    }
                                     expanded = false
                                 }
                             )
@@ -600,6 +612,26 @@ private fun TaskCard(
                 }
 
             }
+
+            // Answer field - only show for text tasks
+            if (type == "text") {
+                TextField(
+                    value = answer,
+                    onValueChange = { answer = it },
+                    label = { Text("Expected Answer", color = Maroon, fontWeight = Bold) },
+                    placeholder = { Text("Enter the correct answer") },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(8.dp),
+                    colors = TextFieldDefaults.colors(
+                        focusedIndicatorColor = Color.Transparent,
+                        unfocusedIndicatorColor = Color.Transparent,
+                        focusedContainerColor = White,
+                        unfocusedContainerColor = White,
+                    ),
+                    singleLine = true
+                )
+            }
+
         } else {
             // Summary view
             if (description.isNotBlank()) {
@@ -782,6 +814,7 @@ private fun AddTask(
     var description by remember { mutableStateOf("") }
     var points by remember { mutableStateOf("10") }
     var type by remember { mutableStateOf("photo") }
+    var answer by remember { mutableStateOf("") }
 
     if (!isAdding) {
         Button(
@@ -828,12 +861,17 @@ private fun AddTask(
                     }
                     TextButton(
                         onClick = {
+                            val finalValue = when (type) {
+                                "text" -> if (answer.isNotBlank()) answer else null
+                                else -> null // QR will be handled by repository after task is created
+                            }
                             onAdd(
                                 Task(
                                     name = name,
                                     description = description,
                                     points = points.toIntOrNull() ?: 10,
-                                    type = type
+                                    type = type,
+                                    value = finalValue
                                 )
                             )
                             isAdding = false
@@ -841,6 +879,7 @@ private fun AddTask(
                             description = ""
                             points = "67"
                             type = "text"
+                            answer = ""
                         },
                         enabled = name.isNotBlank()
                     ) {
@@ -934,6 +973,9 @@ private fun AddTask(
                                 text = { Text(taskType.uppercase()) },
                                 onClick = {
                                     type = taskType
+                                    if (taskType != "text") {
+                                        answer = ""
+                                    }
                                     expanded = false
                                 }
                             )
@@ -941,6 +983,26 @@ private fun AddTask(
                     }
                 }
             }
+
+            // Answer field - only show for text tasks
+            if (type == "text") {
+                TextField(
+                    value = answer,
+                    onValueChange = { answer = it },
+                    label = { Text("Expected Answer", color = Maroon, fontWeight = Bold) },
+                    placeholder = { Text("Enter the correct answer") },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(8.dp),
+                    colors = TextFieldDefaults.colors(
+                        focusedIndicatorColor = Color.Transparent,
+                        unfocusedIndicatorColor = Color.Transparent,
+                        focusedContainerColor = White,
+                        unfocusedContainerColor = White,
+                    ),
+                    singleLine = true
+                )
+            }
+
         }
     }
 }

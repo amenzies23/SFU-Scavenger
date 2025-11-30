@@ -86,7 +86,7 @@ class TaskRepository(
                     "points" to task.points,
                     "type" to task.type,
                     "validationMode" to task.validationMode,
-                    "qrValue" to task.qrValue,
+                    "value" to task.value,
                     "dependsOnTaskIds" to task.dependsOnTaskIds,
                     "updatedAt" to Timestamp.now()
                 )
