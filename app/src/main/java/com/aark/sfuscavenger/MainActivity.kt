@@ -39,6 +39,11 @@ import com.aark.sfuscavenger.ui.history.HistoryViewModel
 import com.aark.sfuscavenger.ui.history.ResultsScreen
 import com.aark.sfuscavenger.ui.history.PlacementScreen
 import com.aark.sfuscavenger.ui.chat.ChatScreen
+import android.content.Intent
+import androidx.compose.ui.platform.LocalContext
+import com.aark.sfuscavenger.GameActivity
+import com.aark.sfuscavenger.ui.home.HomeScreen
+import com.aark.sfuscavenger.ui.home.HomeViewModel
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -61,13 +66,19 @@ fun SFUScavengerApp() {
     val vm: AuthViewModel = viewModel()
     val state by vm.state.collectAsStateWithLifecycle()
     var showProfileSettings by rememberSaveable { mutableStateOf(false) }
-    
-    // Create a shared HistoryViewModel for the history screen
-    val historyViewModel: HistoryViewModel = viewModel(key = "history")
 
     // Tracking the current route to display in the TopBar component
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
+
+    val context = LocalContext.current
+    val isLoggedIn = state.isLoggedIn
+
+    val homeViewModel: HomeViewModel? =
+        if (isLoggedIn) viewModel(key = "home") else null
+
+    val historyViewModel: HistoryViewModel? =
+        if (isLoggedIn) viewModel(key = "history") else null
 
     val topBarTitle: String? = when {
         currentRoute == "home" -> "Home"
@@ -85,10 +96,28 @@ fun SFUScavengerApp() {
     Scaffold(
         topBar = {
             if (topBarTitle != null) {
+                val shouldShowRejoin =
+                    isLoggedIn && (currentRoute == "home" || currentRoute == "events")
+
+                val activeGame =
+                    if (shouldShowRejoin) homeViewModel?.liveGamesForUser?.firstOrNull()
+                    else null
+
                 TopBar(
                     title = topBarTitle,
                     showSettings = (currentRoute == "profile"),
-                    onSettingsClick = { showProfileSettings = true }
+                    onSettingsClick = { showProfileSettings = true },
+
+                    // re-join button
+                    showRejoinGame = activeGame != null,
+                    onRejoinGame = activeGame?.let { game ->
+                        {
+                            val intent = Intent(context, GameActivity::class.java).apply {
+                                putExtra("gameId", game.id)
+                            }
+                            context.startActivity(intent)
+                        }
+                    }
                 )
             }
         },
@@ -123,13 +152,17 @@ fun SFUScavengerApp() {
                             onGoToLogin = { navController.popBackStack() }
                         )
                     }
-                    composable("home") { HomeScreen(navController) }
+                    composable("home") {
+                        val hv = homeViewModel ?: viewModel(key = "home")
+                        HomeScreen(navController, vm = hv)
+                    }
                     composable("events") { EventsScreen(navController) }
-                    composable("history") { 
+                    composable("history") {
+                        val hv = historyViewModel ?: viewModel(key = "history")
                         HistoryScreen(
                             navController = navController,
-                            viewModel = historyViewModel
-                        ) 
+                            viewModel = hv
+                        )
                     }
                     composable("profile") {
                         ProfileScreen(
