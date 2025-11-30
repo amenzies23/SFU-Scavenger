@@ -14,14 +14,37 @@ import kotlinx.coroutines.launch
 class HomeViewModel(
     private val gameRepo: GameRepository = GameRepository()
 ) : ViewModel() {
+
     // Live games this user is currently a member of
     var liveGamesForUser by mutableStateOf<List<Game>>(emptyList())
         private set
 
+    // Games to display as markers on the home map
+    var mapGames by mutableStateOf<List<Game>>(emptyList())
+        private set
+
     init {
-        // On Home load, check if this user has any live games
+        // Re-join: only "started" games current user is in(we need to enforce only one active game)
         viewModelScope.launch {
             liveGamesForUser = gameRepo.getLiveGamesForCurrentUser()
+        }
+
+        // Map: listen to all games and filter by status + location
+        viewModelScope.launch {
+            gameRepo.observeGames().collect { allGames ->
+                mapGames = allGames.filter { game ->
+                    val loc = game.location
+                    if (loc == null) {
+                        false
+                    } else {
+                        when {
+                            game.status == "live" -> true // live
+                            game.status == "draft" && game.startTime != null -> true // scheduled
+                            else -> false
+                        }
+                    }
+                }
+            }
         }
     }
 }

@@ -1,8 +1,7 @@
 package com.aark.sfuscavenger.ui.home
 
-import android.content.Intent
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -10,97 +9,241 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
-import com.aark.sfuscavenger.GameActivity
-import com.aark.sfuscavenger.ui.theme.ScavengerText
+import com.aark.sfuscavenger.data.models.Game
+import com.aark.sfuscavenger.ui.map.SharedMap
+import com.aark.sfuscavenger.ui.theme.Black
+import com.aark.sfuscavenger.ui.theme.LightBeige
+import com.aark.sfuscavenger.ui.theme.Maroon
+import com.aark.sfuscavenger.ui.theme.White
+import com.google.android.gms.maps.model.BitmapDescriptorFactory
+import com.google.android.gms.maps.model.LatLng
+import com.google.maps.android.compose.Marker
+import com.google.maps.android.compose.rememberMarkerState
+import java.text.SimpleDateFormat
+import java.util.Locale
 
 @Composable
 fun HomeScreen(
     navController: NavController,
-    vm: HomeViewModel = viewModel()
+    vm: HomeViewModel
 ) {
-    val context = LocalContext.current
-    val activeGame = vm.liveGamesForUser.firstOrNull()
+    val mapGames = vm.mapGames
+    var selectedGameForJoin by remember { mutableStateOf<Game?>(null) }
 
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(
-                brush = Brush.verticalGradient(
-                    // based off of figma design
-                    colorStops = arrayOf(
-                        0.0f to Color(0xFFF3ECE7),  // Beige at top (0%)
-                        0.66f to Color(0xFFD3C5BB), // Beige at 44%
-                        1.0f to Color(0xFFD3C5BB)   // Light cream at bottom (100%)
-                    )
-                )
-            )
+            .background(Color(0xFFF3ECE7))
             .padding(16.dp)
     ) {
-        Spacer(modifier = Modifier.height(24.dp))
+        Spacer(modifier = Modifier.height(16.dp))
 
-        if (activeGame != null) {
-            Text(
-                text = "Re-join active game session",
-                fontSize = 16.sp,
-                fontWeight = FontWeight.SemiBold,
-                color = Color.Black,
-                modifier = Modifier.padding(bottom = 8.dp)
-            )
+        Text(
+            text = "Games map",
+            fontSize = 16.sp,
+            fontWeight = FontWeight.SemiBold,
+            color = Color.Black,
+            modifier = Modifier.padding(bottom = 8.dp)
+        )
 
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 0.dp),
-                shape = RoundedCornerShape(18.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = Color.White.copy(alpha = 0.95f)
-                ),
-                elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
-                border = BorderStroke(
-                    width = 1.dp,
-                    color = Color(0xFFE1D5CD)
-                ),
-                onClick = {
-                    val intent = Intent(context, GameActivity::class.java).apply {
-                        putExtra("gameId", activeGame.id)
-                    }
-                    context.startActivity(intent)
-                }
-            ) {
-                Column(
-                    modifier = Modifier
-                        .padding(16.dp),
-                    horizontalAlignment = Alignment.Start
-                ) {
-                    ScavengerText(
-                        text = activeGame.name,
-                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
-                        color = Color.Black
-                    )
-                }
+        HomeGamesMap(
+            games = mapGames,
+            modifier = Modifier
+                .fillMaxWidth()
+                .weight(1f),
+            onGameMarkerClick = { game ->
+                selectedGameForJoin = game
             }
-        } else {
-            Text(
-                text = "No active game session.",
-                fontSize = 16.sp,
-                color = Color.DarkGray,
-                modifier = Modifier.padding(top = 8.dp)
-            )
+        )
+    }
+
+    selectedGameForJoin?.let { game ->
+        HomeGameJoinDialog(
+            game = game,
+            onDismiss = { selectedGameForJoin = null },
+            onJoin = {
+                selectedGameForJoin = null
+                navController.navigate("lobby/${game.id}")
+            }
+        )
+    }
+}
+
+@Composable
+private fun HomeGamesMap(
+    games: List<Game>,
+    modifier: Modifier = Modifier,
+    onGameMarkerClick: (Game) -> Unit
+) {
+    Box(
+        modifier = modifier
+            .clip(RoundedCornerShape(16.dp))
+    ) {
+        SharedMap {
+            games.forEach { game ->
+                val loc = game.location ?: return@forEach
+
+                val hue = when {
+                    game.status == "live" -> BitmapDescriptorFactory.HUE_BLUE
+                    game.status == "draft" && game.startTime != null ->
+                        BitmapDescriptorFactory.HUE_ORANGE
+                    else -> return@forEach
+                }
+
+                val position = LatLng(loc.latitude, loc.longitude)
+
+                Marker(
+                    state = rememberMarkerState(position = position),
+                    title = game.name,
+                    snippet = when {
+                        game.status == "live" -> "Live game"
+                        else -> "Scheduled game"
+                    },
+                    icon = BitmapDescriptorFactory.defaultMarker(hue),
+                    onClick = {
+                        onGameMarkerClick(game)
+                        true
+                    }
+                )
+            }
         }
     }
+}
+
+@Composable
+private fun HomeGameJoinDialog(
+    game: Game,
+    onDismiss: () -> Unit,
+    onJoin: () -> Unit
+) {
+    val isLiveJoinable =
+        game.status == "live" && game.joinMode == "open"
+
+    val isScheduled =
+        game.status == "draft" && game.startTime != null
+
+    val formatter = remember {
+        SimpleDateFormat("MMM d, yyyy • h:mm a", Locale.getDefault())
+    }
+
+    val startTimeText = remember(game.startTime) {
+        game.startTime?.toDate()?.let { date ->
+            formatter.format(date)
+        }
+    }
+
+    val joinableFromText = remember(game.startTime) {
+        if (!isScheduled) null
+        else {
+            game.startTime?.toDate()?.let { start ->
+                val joinMillis = start.time - 30L * 60L * 1000L
+                formatter.format(java.util.Date(joinMillis))
+            }
+        }
+    }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = LightBeige,
+        title = {
+            Text(
+                text = game.name,
+                fontWeight = FontWeight.Bold,
+                color = Black
+            )
+        },
+        text = {
+            Column {
+                if (!game.description.isNullOrBlank()) {
+                    Text(text = game.description!!, color = Black)
+                    Spacer(modifier = Modifier.height(8.dp))
+                }
+
+                Text(text = "Status: ${game.status}", color = Black)
+                Text(text = "Join mode: ${game.joinMode}", color = Black)
+
+                if (startTimeText != null) {
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(text = "Start time: $startTimeText", color = Black)
+                }
+
+                if (isScheduled && joinableFromText != null) {
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = "Joinable from: $joinableFromText\n(30 minutes before start)",
+                        color = Black,
+                        fontSize = 14.sp
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                Text(
+                    text = when {
+                        isLiveJoinable ->
+                            "This game is live and open. Join to enter the lobby."
+                        else ->
+                            "This game is not currently joinable."
+                    },
+                    fontSize = 14.sp,
+                    color = Black
+                )
+            }
+        },
+        confirmButton = {
+            if (isLiveJoinable) {
+                Button(
+                    onClick = onJoin,
+                    shape = RoundedCornerShape(16.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Maroon,
+                        contentColor = White
+                    )
+                ) {
+                    Text("Join game")
+                }
+            } else {
+                Button(
+                    onClick = onDismiss,
+                    shape = RoundedCornerShape(16.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Maroon,
+                        contentColor = White
+                    )
+                ) {
+                    Text("OK")
+                }
+            }
+        },
+        dismissButton = {
+            if (isLiveJoinable) {
+                Button(
+                    onClick = onDismiss,
+                    shape = RoundedCornerShape(16.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = LightBeige,
+                        contentColor = Black
+                    )
+                ) {
+                    Text("Cancel")
+                }
+            }
+        }
+    )
 }
