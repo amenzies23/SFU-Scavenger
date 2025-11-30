@@ -318,9 +318,21 @@ fun ProfileSettingsDialog(
     }
 
     if (showImageSourceSelection) {
+<<<<<<< HEAD
         ScavengerDialog(
             onDismissRequest = { showImageSourceSelection = false },
             title = "Choose Image Source",
+=======
+        AlertDialog(
+            onDismissRequest = { showImageSourceSelection = false },
+            title = { 
+                Text(
+                    "Choose Image Source",
+                    fontWeight = FontWeight.Bold,
+                    color = Color.Black
+                ) 
+            },
+>>>>>>> 74a25e1 (visual changes and camera functionality for profile picture)
             text = {
                 Column(
                     verticalArrangement = Arrangement.spacedBy(12.dp)
@@ -367,11 +379,21 @@ fun ProfileSettingsDialog(
                 ) {
                     Text("Cancel")
                 }
+<<<<<<< HEAD
             }
         )
     }
 
     ScavengerDialog(
+=======
+            },
+            containerColor = Color(0xFFFEFAF4),
+            shape = RoundedCornerShape(28.dp)
+        )
+    }
+
+    AlertDialog(
+>>>>>>> 74a25e1 (visual changes and camera functionality for profile picture)
         onDismissRequest = onDismiss,
         title = "Edit Profile",
         confirmButton = {
@@ -404,6 +426,18 @@ fun ProfileSettingsDialog(
                 Text("Cancel")
             }
         },
+<<<<<<< HEAD
+=======
+        title = { 
+            Text(
+                "Edit Profile",
+                fontWeight = FontWeight.Bold,
+                color = Color.Black
+            ) 
+        },
+        containerColor = Color(0xFFFEFAF4),
+        shape = RoundedCornerShape(28.dp),
+>>>>>>> 74a25e1 (visual changes and camera functionality for profile picture)
         text = {
             Column(
                 modifier = Modifier
