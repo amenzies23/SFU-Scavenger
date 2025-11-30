@@ -73,6 +73,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.aark.sfuscavenger.BuildConfig
 import com.aark.sfuscavenger.data.models.Task
+import com.aark.sfuscavenger.qrcode.QRCodeUtils
 import com.aark.sfuscavenger.ui.theme.AppColors
 import com.aark.sfuscavenger.ui.theme.Beige
 import com.aark.sfuscavenger.ui.theme.Black
@@ -453,6 +454,23 @@ private fun TaskCard(
     var type by remember { mutableStateOf(task.type) }
     var answer by remember { mutableStateOf(task.value ?: "") }
 
+    val context = LocalContext.current
+    var showSaveSuccessDialog by remember { mutableStateOf(false) }
+
+    // Show success dialog
+    if (showSaveSuccessDialog) {
+        AlertDialog(
+            onDismissRequest = { showSaveSuccessDialog = false },
+            title = { Text("QR Code Saved") },
+            text = { Text("QR code has been saved to your gallery in the 'QR Codes' folder.") },
+            confirmButton = {
+                TextButton(onClick = { showSaveSuccessDialog = false }) {
+                    Text("OK")
+                }
+            }
+        )
+    }
+
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -649,11 +667,39 @@ private fun TaskCard(
                     color = Black
                 )
             }
-            Text(
-                text = "Points: ${task.points} • ${task.type.uppercase()}",
-                fontSize = 12.sp,
-                color = Maroon
-            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ){
+                Text(
+                    text = "Points: ${task.points} • ${task.type.uppercase()}",
+                    fontSize = 12.sp,
+                    color = Maroon
+                )
+                if (task.type == "qr" && !task.value.isNullOrBlank()) {
+//                    Spacer(modifier = Modifier.width(8.dp))
+                    TextButton(onClick = {
+                        val qrBitmap = QRCodeUtils.generateQRCode(task.value)
+                        val saved = QRCodeUtils.saveQrCodeToGallery(
+                            context,
+                            qrBitmap,
+                            "QR_${task.name.replace(" ", "_")}_${task.name}"
+                        )
+                        if (saved) {
+                            showSaveSuccessDialog = true
+                        }
+                    }) {
+                        Text(
+                            text = "Save Qr Code",
+                            fontSize = 14.sp,
+                            color = Maroon,
+                            textDecoration = Underline
+                        )
+                    }
+                }
+            }
+
         }
     }
 }
