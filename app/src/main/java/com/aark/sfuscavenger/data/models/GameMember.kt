@@ -7,6 +7,6 @@ package com.aark.sfuscavenger.data.models
 data class GameMember(
     val gameId: String = "",
     val teamId: String? = null,
-    val joinedAt: Long = 0L
+    val joinedAt: Long = 0L,
+    val xpEarned: Int = 0 // XP earned in each specific game to count later on 
 )
-

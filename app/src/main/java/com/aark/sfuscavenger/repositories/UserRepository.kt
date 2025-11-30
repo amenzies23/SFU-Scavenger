@@ -273,5 +273,82 @@ class UserRepository(
      */
     private fun getFriendshipDocument(userId1: String, userId2: String) =
         users.document(userId1).collection("friends").document(userId2)
-}
 
+    /**
+     * Calculate XP required to complete the current level.
+     * Level 1: 50 XP
+     * Level n: ceil(Level(n-1) * 1.25)
+     */
+    fun calculateLevelRequirement(currentLevel: Int): Int {
+        var req = 50.0
+        for (i in 1 until currentLevel) {
+            req = kotlin.math.ceil(req * 1.25)
+        }
+        return req.toInt()
+    }
+
+    /**
+     * Adds XP to a user, handling level ups and per-game XP caps.
+     */
+    suspend fun addXpToUser(userId: String, gameId: String, xpAmount: Int) {
+        val userRef = users.document(userId)
+        val membershipRef = users.document(userId).collection("memberships").document(gameId)
+        val MAX_XP_PER_GAME = 100
+
+        try {
+            firestore.runTransaction { transaction ->
+                val membershipSnapshot = transaction.get(membershipRef)
+                
+                // Get current XP earned, or 0 if they haven't earned any yet
+                val xpEarnedInGameSoFar = 0
+                if (membershipSnapshot.exists()) {
+                    membershipSnapshot.getLong("xpEarned")?.toInt() ?: 0
+                }
+
+                val xpRemainingInCap = MAX_XP_PER_GAME - xpEarnedInGameSoFar
+
+                // check whether or not the XP cap has been hit
+                if (xpRemainingInCap <= 0) {
+                    return@runTransaction
+                }
+
+                val finalXpToAdd = minOf(xpAmount, xpRemainingInCap)
+
+                val userSnapshot = transaction.get(userRef)
+                val user = userSnapshot.toObject(User::class.java)
+                
+                if (user == null) {
+                    return@runTransaction
+                }
+
+                var currentLevel = user.level
+                var currentXp = user.xp + finalXpToAdd
+
+                var xpNeededForNextLevel = calculateLevelRequirement(currentLevel)
+                
+                while (currentXp >= xpNeededForNextLevel) {
+                    currentXp = currentXp - xpNeededForNextLevel
+                    currentLevel = currentLevel + 1
+                    xpNeededForNextLevel = calculateLevelRequirement(currentLevel)
+                }
+
+                // Save new Level and XP to User profile
+                transaction.update(userRef, mapOf(
+                    "level" to currentLevel,
+                    "xp" to currentXp
+                ))
+
+                // Save new total earned XP to the Game Membership (so we track the cap)
+                transaction.set(
+                    membershipRef,
+                    mapOf("xpEarned" to xpEarnedInGameSoFar + finalXpToAdd),
+                    SetOptions.merge()
+                )
+            }.await()
+            
+        } catch (e: Exception) {
+            e.printStackTrace()
+            throw e
+        }
+    }
+}
