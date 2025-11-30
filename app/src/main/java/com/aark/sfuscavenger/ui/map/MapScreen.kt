@@ -50,22 +50,15 @@ import com.google.firebase.storage.FirebaseStorage
 import kotlinx.coroutines.tasks.await
 
 @Composable
-fun MapScreen(
-    gameId: String,
-    vm: MapViewModel = viewModel()
+fun SharedMap(
+    modifier: Modifier = Modifier,
+    enableMyLocation: Boolean = true,
+    content: @Composable () -> Unit
 ) {
-    val uiState by vm.uiState.collectAsStateWithLifecycle()
-
-    // To start listening as soon as we have the ids
-    LaunchedEffect(gameId) {
-        vm.start(gameId)
-    }
-
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
 
     val cameraPositionState = rememberCameraPositionState()
-
     val fusedLocationClient = remember {
         LocationServices.getFusedLocationProviderClient(context)
     }
@@ -80,8 +73,7 @@ fun MapScreen(
                     permissions[Manifest.permission.ACCESS_COARSE_LOCATION] == true
     }
 
-    // Check/request permission
-    // TODO: Move the permission request to happen on app startup
+    // Ask for permission if needed
     LaunchedEffect(Unit) {
         val fineGranted = ContextCompat.checkSelfPermission(
             context, Manifest.permission.ACCESS_FINE_LOCATION
@@ -104,28 +96,53 @@ fun MapScreen(
 
     // Once we have permission, move camera to current location
     LaunchedEffect(hasLocationPermission) {
-        if (hasLocationPermission) {
+        if (hasLocationPermission && enableMyLocation) {
             scope.launch {
                 try {
                     val location = fusedLocationClient.lastLocation.await()
                     location?.let {
                         val here = LatLng(it.latitude, it.longitude)
                         cameraPositionState.animate(
-                            update = CameraUpdateFactory.newLatLngZoom(here, 17f),
+                            update = CameraUpdateFactory.newLatLngZoom(here, 15f),
                             durationMs = 1000
                         )
                     }
-                } catch (e: Exception) {
+                } catch (_: Exception) {
                 }
             }
         }
+    }
+
+    GoogleMap(
+        modifier = modifier,
+        cameraPositionState = cameraPositionState,
+        properties = MapProperties(
+            isMyLocationEnabled = enableMyLocation && hasLocationPermission
+        ),
+        uiSettings = MapUiSettings(
+            myLocationButtonEnabled = enableMyLocation,
+            zoomControlsEnabled = true
+        )
+    ) {
+        content() // callers add their markers here
+    }
+}
+@Composable
+fun MapScreen(
+    gameId: String,
+    vm: MapViewModel = viewModel()
+) {
+    val uiState by vm.uiState.collectAsStateWithLifecycle()
+
+    LaunchedEffect(gameId) {
+        vm.start(gameId)
     }
 
     Column(
         modifier = Modifier
             .fillMaxSize()
             .background(Color(0xFFF3ECE7))
-            .padding(16.dp) ,
+            .padding(16.dp),
         verticalArrangement = Arrangement.SpaceEvenly
     ) {
         Spacer(modifier = Modifier.height(12.dp))
@@ -136,19 +153,7 @@ fun MapScreen(
                 .aspectRatio(5f / 8f)
                 .clip(RoundedCornerShape(16.dp))
         ) {
-            GoogleMap(
-                modifier = Modifier.fillMaxSize(),
-                cameraPositionState = cameraPositionState,
-                properties = MapProperties(
-                    isMyLocationEnabled = hasLocationPermission
-                    // Uncomment if using the hardcoded SFU location, and comment above ^
-                    // isMyLocationEnabled = false
-                ),
-                uiSettings = MapUiSettings(
-                    myLocationButtonEnabled = true,
-                    zoomControlsEnabled = true
-                )
-            ) {
+            SharedMap {
                 uiState.submissions.forEach { submission ->
                     val geo = submission.geo ?: return@forEach
                     val position = LatLng(geo.latitude, geo.longitude)
@@ -156,7 +161,7 @@ fun MapScreen(
                         "approved" -> BitmapDescriptorFactory.HUE_GREEN
                         "pending" -> BitmapDescriptorFactory.HUE_ORANGE
                         "rejected" -> BitmapDescriptorFactory.HUE_RED
-                        else -> BitmapDescriptorFactory.HUE_BLUE // fallback
+                        else -> BitmapDescriptorFactory.HUE_BLUE
                     }
                     key(submission.id) {
                         val markerState = rememberMarkerState(position = position)
@@ -174,15 +179,14 @@ fun MapScreen(
                 }
             }
         }
+
         Spacer(modifier = Modifier.weight(1f))
     }
 
-    // Loading indicator when UI is loading
     if (uiState.loading) {
         CircularProgressIndicator()
     }
 
-    // Detail dialog when a pin is clicked
     uiState.selectedSubmission?.let { sub ->
         SubmissionDialog(
             submission = sub,
