@@ -531,6 +531,17 @@ class TaskViewModel(
                 val taskRef = gameRef
                     .collection("tasks")
                     .document(submission.taskId)
+                    .get()
+                    .await()
+
+                val points = taskDoc.getLong("points")?.toInt() ?: 0
+                
+                // Calculate User XP (half of task points, rounded up)
+                val xpToAward = kotlin.math.ceil(points / 2.0).toInt()
+
+                // Update submission
+                db.collection("games")
+                    .document(gameId)
                 val teamRef = gameRef
                     .collection("teams")
                     .document(submission.teamId)
@@ -567,6 +578,10 @@ class TaskViewModel(
                             "scoreAwarded" to points
                         )
                     )
+                    .await()
+                
+                val userRepository = com.aark.sfuscavenger.repositories.UserRepository()
+                userRepository.addXpToUser(submission.submitterId, gameId, xpToAward)
 
                     // Update the team: increment score + latestSubmissionAt
                     tx.update(
