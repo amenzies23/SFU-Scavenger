@@ -74,6 +74,12 @@ fun SFUScavengerApp() {
     val context = LocalContext.current
     val isLoggedIn = state.isLoggedIn
 
+    val homeViewModel: HomeViewModel? =
+        if (isLoggedIn) viewModel(key = "home") else null
+
+    val historyViewModel: HistoryViewModel? =
+        if (isLoggedIn) viewModel(key = "history") else null
+
     val topBarTitle: String? = when {
         currentRoute == "home" -> "Home"
         currentRoute == "events" -> "Events"
@@ -93,14 +99,9 @@ fun SFUScavengerApp() {
                 val shouldShowRejoin =
                     isLoggedIn && (currentRoute == "home" || currentRoute == "events")
 
-                // Lazily create HomeViewModel only when we actually need it
-                val homeViewModel: HomeViewModel? = if (shouldShowRejoin) {
-                    viewModel(key = "home")
-                } else {
-                    null
-                }
-
-                val activeGame = homeViewModel?.liveGamesForUser?.firstOrNull()
+                val activeGame =
+                    if (shouldShowRejoin) homeViewModel?.liveGamesForUser?.firstOrNull()
+                    else null
 
                 TopBar(
                     title = topBarTitle,
@@ -152,15 +153,15 @@ fun SFUScavengerApp() {
                         )
                     }
                     composable("home") {
-                        val homeViewModel: HomeViewModel = viewModel(key = "home")
-                        HomeScreen(navController, vm = homeViewModel)
+                        val hv = homeViewModel ?: viewModel(key = "home")
+                        HomeScreen(navController, vm = hv)
                     }
                     composable("events") { EventsScreen(navController) }
                     composable("history") {
-                        val historyViewModel: HistoryViewModel = viewModel(key = "history")
+                        val hv = historyViewModel ?: viewModel(key = "history")
                         HistoryScreen(
                             navController = navController,
-                            viewModel = historyViewModel
+                            viewModel = hv
                         )
                     }
                     composable("profile") {
