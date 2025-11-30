@@ -14,7 +14,7 @@ data class Task(
     val points: Int = 0,
     val type: String = "photo", // "photo" | "qr" | "text" | "geo"
     val validationMode: String = "manual",// "manual" | "auto" | "hybrid"
-    val qrValue: String? = null,// for QR tasks
+    val value: String? = null,// for QR tasks
     val dependsOnTaskIds: List<String> = emptyList(),
     val createdAt: Timestamp? = null,
     val updatedAt: Timestamp? = null

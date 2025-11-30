@@ -30,6 +30,7 @@ android {
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         manifestPlaceholders["MAPS_API_KEY"] = mapsApiKey
+        buildConfigField("String", "MAPS_API_KEY", "\"$mapsApiKey\"")
         buildConfigField("String", "CHAT_SECRET", "\"$chatSecret\"")
     }
 
@@ -62,6 +63,8 @@ dependencies {
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.compose.ui.graphics)
     implementation(libs.androidx.compose.foundation)
+    implementation(libs.androidx.material3)
+    implementation(libs.places)
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
     val composeBom = platform("androidx.compose:compose-bom:2024.04.01")
     implementation(composeBom)
@@ -91,5 +94,6 @@ dependencies {
     implementation("com.google.maps.android:maps-compose:6.1.0")
     implementation("androidx.compose.material:material-icons-extended")
     implementation("androidx.exifinterface:exifinterface:1.3.6")
-
+    implementation("com.google.zxing:core:3.5.1")
+    implementation("com.journeyapps:zxing-android-embedded:4.3.0")
 }
