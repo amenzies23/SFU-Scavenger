@@ -6,6 +6,7 @@ import com.aark.sfuscavenger.data.models.Game
 import com.aark.sfuscavenger.data.models.Task
 import com.aark.sfuscavenger.repositories.GameRepository
 import com.aark.sfuscavenger.repositories.TaskRepository
+import com.google.firebase.Timestamp
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.GeoPoint
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -78,6 +79,10 @@ class CreateGameViewModel(
         _game.value = _game.value.copy(location = geoPoint)
     }
 
+    fun updateStartTime(timestamp: Timestamp?) {
+        _game.value = _game.value.copy(startTime = timestamp)
+    }
+
     fun saveGame() {
         viewModelScope.launch {
             _loading.value = true
@@ -91,6 +96,13 @@ class CreateGameViewModel(
                     return@launch
                 }
 
+                // Require location when creating a new game
+                if (currentGame.location == null) {
+                    _error.value = "Please select a location for the game"
+                    _loading.value = false
+                    return@launch
+                }
+
                 if (isEditMode) {
                     // Update existing game
                     gameRepo.updateGame(currentGame)
@@ -98,11 +110,12 @@ class CreateGameViewModel(
                     // Create new game
                     gameRepo.createGame(
                         name = currentGame.name,
-                        lat = currentGame.location?.latitude ?: 49.2827,
-                        lng = currentGame.location?.longitude ?: -123.1207,
+                        lat = currentGame.location.latitude,
+                        lng = currentGame.location.longitude,
                         joinMode = currentGame.joinMode,
                         joinCode = currentGame.joinCode?.ifBlank { null },
-                        description = currentGame.description
+                        description = currentGame.description,
+                        startTime = currentGame.startTime
                     )
                 }
 

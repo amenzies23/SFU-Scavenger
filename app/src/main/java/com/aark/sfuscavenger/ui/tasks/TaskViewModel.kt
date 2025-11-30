@@ -323,16 +323,30 @@ class TaskViewModel(
         val gameId = _state.value.gameId ?: return
         val teamId = _state.value.teamId ?: return
         val uid = auth.currentUser?.uid ?: return
+        var status = "approved"
 
         viewModelScope.launch {
             try {
+                val taskDoc = db.collection("games")
+                    .document(gameId)
+                    .collection("tasks")
+                    .document(taskId)
+                    .get()
+                    .await()
+
+                val task = taskDoc.toObject(Task::class.java)
+
+                if (answer != task?.value) {
+                    status = "pending"
+                }
+
                 val geoPoint = getCurrentLocation(context)
 
                 val submission = hashMapOf(
                     "taskId" to taskId,
                     "userId" to uid,
                     "type" to "text",
-                    "status" to "pending",
+                    "status" to status,
                     "text" to answer.trim(),
                     "createdAt" to Timestamp.now(),
                     "scoreAwarded" to 0
@@ -401,6 +415,61 @@ class TaskViewModel(
             } catch (e: Exception) {
                 _state.update { it.copy(error = "Failed to submit photo: ${e.message}") }
             }
+        }
+    }
+
+    /**
+     * Player
+     * Submits qr answer with geolocation
+     */
+    fun submitQRAnswer(taskId: String, scannedValue: String, context: Context) {
+        val gameId = _state.value.gameId ?: return
+        val teamId = _state.value.teamId ?: return
+        val uid = auth.currentUser?.uid ?: return
+        var status = "approved"
+
+        viewModelScope.launch {
+            try {
+                val taskDoc = db.collection("games")
+                    .document(gameId)
+                    .collection("tasks")
+                    .document(taskId)
+                    .get()
+                    .await()
+
+                val task = taskDoc.toObject(Task::class.java)
+
+                if (scannedValue != task?.value) {
+                    status = "rejected"
+                }
+
+                val geoPoint = getCurrentLocation(context)
+
+                val submission = hashMapOf(
+                    "taskId" to taskId,
+                    "userId" to uid,
+                    "type" to "qr",
+                    "status" to status,
+                    "text" to scannedValue,
+                    "createdAt" to Timestamp.now(),
+                    "scoreAwarded" to 0
+                )
+
+                if (geoPoint != null) {
+                    submission["geo"] = geoPoint
+                }
+
+                db.collection("games")
+                    .document(gameId)
+                    .collection("teams")
+                    .document(teamId)
+                    .collection("submissions")
+                    .add(submission)
+                    .await()
+            } catch (e: Exception) {
+                _state.update { it.copy(error = "Failed to submit QR answer: ${e.message}") }
+            }
+
         }
     }
 
