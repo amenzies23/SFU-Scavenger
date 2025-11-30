@@ -37,6 +37,8 @@ import com.aark.sfuscavenger.ui.history.HistoryScreen
 import com.aark.sfuscavenger.ui.history.HistorySearchBar
 import com.aark.sfuscavenger.ui.history.HistoryViewModel
 import com.aark.sfuscavenger.ui.history.ResultsScreen
+import com.aark.sfuscavenger.ui.history.PlacementScreen
+import com.aark.sfuscavenger.ui.chat.ChatScreen
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -73,6 +75,7 @@ fun SFUScavengerApp() {
         currentRoute == "history" -> "History"
         currentRoute == "profile" -> "Profile"
         currentRoute?.startsWith("lobby/") == true -> "Lobby"
+        currentRoute?.startsWith("placement/") == true -> "Placements"
         currentRoute?.startsWith("createGame") == true -> {
             if (currentRoute.contains("gameId=")) "Edit Game" else "Create Game"
         }
@@ -154,6 +157,18 @@ fun SFUScavengerApp() {
                         val teamId = teamArg.takeUnless { it == "none" }
                         ResultsScreen(navController, gameId, teamId)
                     }
+                    composable(
+                        route = "placement/{gameId}"
+                    ) { backStackEntry ->
+                        val gameId = backStackEntry.arguments?.getString("gameId").orEmpty()
+                        PlacementScreen(navController, gameId)
+                    }
+                    composable(
+                        route = "chat/{gameId}"
+                    ) { backStackEntry ->
+                        val gameId = backStackEntry.arguments?.getString("gameId").orEmpty()
+                        ChatScreen(gameId = gameId)
+                    }
                 }
             }
         }
@@ -168,6 +183,8 @@ fun SFUScavengerApp() {
                 currentRoute == "profile" || 
                 currentRoute.startsWith("lobby/") || 
                 currentRoute.startsWith("results/") ||
+                currentRoute.startsWith("placement/") ||
+                currentRoute.startsWith("chat/") ||
                 currentRoute.startsWith("createGame")
             
             if (state.isLoggedIn && !isAuthenticatedRoute) {
