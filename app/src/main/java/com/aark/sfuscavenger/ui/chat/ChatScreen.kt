@@ -27,6 +27,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.TextFieldDefaults
 import com.aark.sfuscavenger.ui.theme.Beige
+import com.aark.sfuscavenger.ui.theme.ScavengerLoader
 import com.aark.sfuscavenger.ui.theme.Maroon
 import com.aark.sfuscavenger.ui.theme.White
 
@@ -79,7 +80,7 @@ fun ChatScreen(
                     modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center
                 ) {
-                    CircularProgressIndicator()
+                    ScavengerLoader()
                 }
             } else {
                 LazyColumn(

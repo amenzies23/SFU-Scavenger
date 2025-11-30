@@ -27,6 +27,8 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.aark.sfuscavenger.ui.theme.Beige
 import com.aark.sfuscavenger.ui.theme.Black
+import com.aark.sfuscavenger.ui.theme.ScavengerLoader
+import com.aark.sfuscavenger.ui.theme.ScavengerDialog
 import com.aark.sfuscavenger.ui.theme.Maroon
 import com.aark.sfuscavenger.ui.theme.White
 import coil.compose.AsyncImage
@@ -90,7 +92,7 @@ fun LobbyScreen(
                             .weight(1f),
                         contentAlignment = Alignment.Center
                     ) {
-                        CircularProgressIndicator()
+                        ScavengerLoader()
                     }
                 } else {
                     if (state.error != null) {
@@ -444,9 +446,9 @@ private fun CreateTeamDialog(
 ) {
     var teamName by remember { mutableStateOf("") }
 
-    AlertDialog(
+    ScavengerDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Create Team") },
+        title = "Create Team",
         text = {
             Column {
                 Text("Give your team a name")
@@ -464,11 +466,11 @@ private fun CreateTeamDialog(
                 onClick = { if (teamName.isNotBlank()) onConfirm(teamName) },
                 enabled = teamName.isNotBlank()
             ) {
-                Text("Create")
+                Text("Create", color = Maroon)
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancel") }
+            TextButton(onClick = onDismiss) { Text("Cancel", color = Maroon) }
         }
     )
 }

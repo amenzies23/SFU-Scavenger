@@ -53,9 +53,10 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import androidx.navigation.compose.currentBackStackEntryAsState
-import com.aark.sfuscavenger.ui.theme.CustomText
 import com.aark.sfuscavenger.ui.theme.LightBeige
 import com.aark.sfuscavenger.ui.theme.Maroon
+import com.aark.sfuscavenger.ui.theme.ScavengerLoader
+import com.aark.sfuscavenger.ui.theme.ScavengerText
 
 @Composable
 fun HistoryScreen(
@@ -124,7 +125,7 @@ private fun HistoryHeader(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            CustomText(
+            ScavengerText(
                 text = "Previous Games",
                 style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold)
             )
@@ -278,7 +279,7 @@ private fun HistoryLoading() {
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Top
     ) {
-        CircularProgressIndicator(color = Maroon)
+        ScavengerLoader()
         Spacer(modifier = Modifier.height(12.dp))
         Text("Loading history…")
     }
@@ -355,7 +356,7 @@ private fun HistoryCardItem(
     Surface(
         modifier = Modifier
             .fillMaxWidth()
-            .shadow(elevation = 0.dp, shape = shape, clip = false)
+            .shadow(elevation = 4.dp, shape = shape, clip = false)
             .clip(shape)
             .clickable(
                 interactionSource = interactionSource,
@@ -367,7 +368,7 @@ private fun HistoryCardItem(
                 color = Color(0xFFE1D5CD),
                 shape = shape
             ),
-        color = Color.White.copy(alpha = 0.8f)
+        color = Color.White.copy(alpha = 0.95f)
     ) {
         Row(
             modifier = Modifier
@@ -375,9 +376,10 @@ private fun HistoryCardItem(
                 .padding(horizontal = 14.dp, vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            CustomText(
+            ScavengerText(
                 text = card.title,
                 style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
+                color = Color.Black,
                 modifier = Modifier.weight(1f)
             )
             Text(

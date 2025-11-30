@@ -27,6 +27,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import com.aark.sfuscavenger.ui.theme.Black
+import com.aark.sfuscavenger.ui.theme.ScavengerLoader
+import com.aark.sfuscavenger.ui.theme.ScavengerDialog
 import com.aark.sfuscavenger.ui.theme.Maroon
 import com.aark.sfuscavenger.ui.theme.White
 import com.google.firebase.storage.FirebaseStorage
@@ -85,7 +87,7 @@ fun TaskScreen(
                     modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center
                 ) {
-                    CircularProgressIndicator(color = Maroon)
+                    ScavengerLoader()
                 }
             } else if (state.error != null) {
                 Text(
@@ -145,17 +147,9 @@ fun TaskScreen(
 
     // End game confirmation dialog
     if (showEndGameDialog) {
-        AlertDialog(
+        ScavengerDialog(
             onDismissRequest = { showEndGameDialog = false },
-            containerColor = Color(0xFFF3ECE7),
-            shape = RoundedCornerShape(16.dp),
-            title = {
-                Text(
-                    text = "End Game?",
-                    fontWeight = FontWeight.Bold,
-                    color = Black
-                )
-            },
+            title = "End Game?",
             text = {
                 Text(
                     text = "Are you sure you want to end this game? This will finalize all scores and show the results.",
@@ -348,17 +342,9 @@ private fun TaskSubmissionDialog(
 ) {
     var textAnswer by remember { mutableStateOf("") }
 
-    AlertDialog(
+    ScavengerDialog(
         onDismissRequest = onDismiss,
-        containerColor = Color(0xFFF3ECE7),
-        shape = RoundedCornerShape(16.dp),
-        title = {
-            Text(
-                text = task.name,
-                fontWeight = FontWeight.Bold,
-                color = Black
-            )
-        },
+        title = task.name,
         text = {
             Column {
                 if (task.description.isNotBlank()) {
@@ -440,13 +426,9 @@ private fun PhotoSubmissionDialog(
         takePictureLauncher.launch(uri)
     }
 
-    AlertDialog(
+    ScavengerDialog(
         onDismissRequest = { if (!isSubmitting) onDismiss() },
-        containerColor = Color(0xFFF3ECE7),
-        shape = RoundedCornerShape(16.dp),
-        title = {
-            Text(task.name, fontWeight = FontWeight.Bold, color = Black)
-        },
+        title = task.name,
         text = {
             Column {
                 if (task.description.isNotBlank()) {
@@ -510,7 +492,6 @@ private fun PhotoSubmissionDialog(
                 Text(if (isSubmitting) "Submitting..." else "Submit", color = White)
             }
         },
-
         dismissButton = {
             TextButton(
                 onClick = { if (!isSubmitting) onDismiss() },
@@ -735,16 +716,16 @@ private fun SubmissionCard(
                         contentScale = ContentScale.Crop
                     )
 
-                } else {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(220.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        CircularProgressIndicator()
+                    } else {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(220.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            ScavengerLoader()
+                        }
                     }
-                }
 
                 if (showFullscreen && downloadUrl != null) {
                     Dialog(onDismissRequest = { showFullscreen = false }) {

@@ -25,6 +25,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.aark.sfuscavenger.GameActivity
+import com.aark.sfuscavenger.ui.theme.ScavengerText
 
 @Composable
 fun HomeScreen(
@@ -66,8 +67,9 @@ fun HomeScreen(
                     .padding(top = 0.dp),
                 shape = RoundedCornerShape(18.dp),
                 colors = CardDefaults.cardColors(
-                    containerColor = Color.White.copy(alpha = 0.8f)
+                    containerColor = Color.White.copy(alpha = 0.95f)
                 ),
+                elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
                 border = BorderStroke(
                     width = 1.dp,
                     color = Color(0xFFE1D5CD)
@@ -84,10 +86,9 @@ fun HomeScreen(
                         .padding(16.dp),
                     horizontalAlignment = Alignment.Start
                 ) {
-                    Text(
+                    ScavengerText(
                         text = activeGame.name,
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.Medium,
+                        style = androidx.compose.material3.MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
                         color = Color.Black
                     )
                 }
