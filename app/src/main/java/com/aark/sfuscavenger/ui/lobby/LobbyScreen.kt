@@ -12,7 +12,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.MailOutline
-import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -22,7 +21,6 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -31,6 +29,9 @@ import com.aark.sfuscavenger.ui.theme.Beige
 import com.aark.sfuscavenger.ui.theme.Black
 import com.aark.sfuscavenger.ui.theme.Maroon
 import com.aark.sfuscavenger.ui.theme.White
+import coil.compose.AsyncImage
+import androidx.compose.ui.layout.ContentScale
+
 
 @Composable
 fun LobbyScreen(
@@ -291,7 +292,7 @@ private fun LobbyContent(
             }
         }
 
-        // DELETE TEAM button  (only visible if user is ONLY member)
+        // DELETE TEAM button
         if (!state.isHost && state.currentUserTeamId != null) {
             val userTeam = state.teams.firstOrNull { it.id == state.currentUserTeamId }
             val isOnlyMember = (userTeam?.members?.size == 1)
@@ -384,6 +385,40 @@ private fun TeamCard(
             }
 
             Spacer(modifier = Modifier.height(8.dp))
+
+            // Team Member PFP Row
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                team.memberPhotos.forEachIndexed { i, photoUrl ->
+                    if (photoUrl != null) {
+                        AsyncImage(
+                            model = photoUrl,
+                            contentDescription = "Profile",
+                            modifier = Modifier
+                                .size(36.dp)
+                                .clip(RoundedCornerShape(50)),
+                            contentScale = ContentScale.Crop
+                        )
+                    } else {
+                        Box(
+                            modifier = Modifier
+                                .size(36.dp)
+                                .clip(RoundedCornerShape(50))
+                                .background(Color(0xFFA46A4B)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            val initial = team.members[i].firstOrNull()?.uppercase() ?: "?"
+                            Text(
+                                text = initial.toString(),
+                                color = Color.White,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+                }
+            }
 
             if (team.members.isEmpty()) {
                 Text(
