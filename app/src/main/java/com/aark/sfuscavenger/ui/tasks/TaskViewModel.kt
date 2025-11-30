@@ -10,6 +10,7 @@ import com.aark.sfuscavenger.data.models.Game
 import com.aark.sfuscavenger.data.models.Submission
 import com.aark.sfuscavenger.data.models.Task
 import com.aark.sfuscavenger.data.models.Team
+import com.aark.sfuscavenger.repositories.UserRepository
 import com.google.firebase.Timestamp
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
@@ -112,7 +113,7 @@ class TaskViewModel(
                     _state.update { it.copy(teamId = teamId) }
                     if (teamId != null) {
 
-                        if (!isHost && teamId != null) {
+                        if (!isHost) {
                             // Get current team score
                             val teamSnap = db.collection("games")
                                 .document(gameId)
@@ -600,8 +601,8 @@ class TaskViewModel(
                 val taskRef = gameRef
                     .collection("tasks")
                     .document(submission.taskId)
-                    .get()
-                    .await()
+
+                val taskDoc = taskRef.get().await()
 
                 val points = taskDoc.getLong("points")?.toInt() ?: 0
                 
@@ -647,10 +648,6 @@ class TaskViewModel(
                             "scoreAwarded" to points
                         )
                     )
-                    .await()
-                
-                val userRepository = com.aark.sfuscavenger.repositories.UserRepository()
-                userRepository.addXpToUser(submission.submitterId, gameId, xpToAward)
 
                     // Update the team: increment score + latestSubmissionAt
                     tx.update(
@@ -663,6 +660,9 @@ class TaskViewModel(
 
                     null
                 }.await()
+
+                val userRepository = UserRepository()
+                userRepository.addXpToUser(submission.submitterId, gameId, xpToAward)
 
             } catch (e: Exception) {
                 _state.update { it.copy(error = e.message) }
