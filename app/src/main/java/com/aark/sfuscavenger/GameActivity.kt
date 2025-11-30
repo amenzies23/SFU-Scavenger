@@ -51,9 +51,8 @@ class GameActivity : ComponentActivity() {
             GameApp(
                 gameId = gameId,
                 onExitGame = {
-                    // Finish GameActivity and go back to the MainActivity
+                    // Just close GameActivity
                     finish()
-                    startActivity(Intent(this, MainActivity::class.java))
                 }
             )
         }
