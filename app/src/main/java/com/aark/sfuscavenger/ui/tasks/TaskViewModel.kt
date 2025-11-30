@@ -404,6 +404,61 @@ class TaskViewModel(
         }
     }
 
+    /**
+     * Player
+     * Submits qr answer with geolocation
+     */
+    fun submitQRAnswer(taskId: String, scannedValue: String, context: Context) {
+        val gameId = _state.value.gameId ?: return
+        val teamId = _state.value.teamId ?: return
+        val uid = auth.currentUser?.uid ?: return
+
+        viewModelScope.launch {
+            try {
+                val taskDoc = db.collection("games")
+                    .document(gameId)
+                    .collection("tasks")
+                    .document(taskId)
+                    .get()
+                    .await()
+
+                val task = taskDoc.toObject(Task::class.java)
+
+                if (task?.value != scannedValue) {
+                    _state.update { it.copy(error = "Scanned QR code does not match the task") }
+                    return@launch
+                }
+
+                val geoPoint = getCurrentLocation(context)
+
+                val submission = hashMapOf(
+                    "taskId" to taskId,
+                    "userId" to uid,
+                    "type" to "qr",
+                    "status" to "pending",
+                    "text" to scannedValue,
+                    "createdAt" to Timestamp.now(),
+                    "scoreAwarded" to 0
+                )
+
+                if (geoPoint != null) {
+                    submission["geo"] = geoPoint
+                }
+
+                db.collection("games")
+                    .document(gameId)
+                    .collection("teams")
+                    .document(teamId)
+                    .collection("submissions")
+                    .add(submission)
+                    .await()
+            } catch (e: Exception) {
+                _state.update { it.copy(error = "Failed to submit QR answer: ${e.message}") }
+            }
+
+        }
+    }
+
 
     /**
      * Host; Observe all submissions

@@ -23,6 +23,10 @@
             android:label="@string/title_activity_sign_up"
             android:theme="@style/Theme.SFUScavenger" />
         <activity
+            android:name=".qrcode.QRScanner"
+            android:screenOrientation="portrait"
+            android:stateNotNeeded="true"/>
+        <activity
             android:name=".GameActivity"
             android:exported="false"
             android:theme="@style/Theme.SFUScavenger"

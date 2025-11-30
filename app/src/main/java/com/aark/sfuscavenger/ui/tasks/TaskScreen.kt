@@ -37,9 +37,14 @@ import androidx.compose.ui.platform.LocalContext
 import android.net.Uri
 import java.io.File
 import android.graphics.BitmapFactory
+import android.widget.Toast
 import androidx.core.content.FileProvider
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.background
+import androidx.compose.ui.text.intl.Locale
+import com.aark.sfuscavenger.qrcode.QRScanner
+import com.journeyapps.barcodescanner.ScanContract
+import com.journeyapps.barcodescanner.ScanOptions
 
 
 /**
@@ -63,6 +68,7 @@ fun TaskScreen(
     // Separate selection states for text vs photo tasks
     var selectedTextTask by remember { mutableStateOf<TaskUi?>(null) }
     var selectedPhotoTask by remember { mutableStateOf<TaskUi?>(null) }
+    var selectedQRTask by remember { mutableStateOf<TaskUi?>(null) }
     var showEndGameDialog by remember { mutableStateOf(false) }
 
     // When gameId changes or screen loads, start fetching tasks for that game
@@ -109,6 +115,7 @@ fun TaskScreen(
                             when (task.type) {
                                 "photo" -> selectedPhotoTask = task
                                 "text" -> selectedTextTask = task
+                                "qr" -> selectedQRTask = task
                                 else -> {
                                     selectedTextTask = task
                                 }
@@ -139,6 +146,36 @@ fun TaskScreen(
             onSubmitPhoto = { bytes ->
                 vm.submitPhotoAnswer(task.id, bytes, context)
                 selectedPhotoTask = null
+            }
+        )
+    }
+
+    selectedQRTask?.let { task ->
+//        val qrScannerLauncher = rememberLauncherForActivityResult(ScanContract()) { result ->
+//            if (result.contents != null) {
+//                vm.submitQRAnswer(task.id, result.contents, context)
+//                Toast.makeText(context, "QR code submitted!", Toast.LENGTH_SHORT).show()
+//            }
+//            selectedQRTask = null
+//        }
+//        LaunchedEffect(task) {
+//            val options = ScanOptions().apply {
+//                setPrompt("Scan the QR code for: ${task.name}")
+//                setBeepEnabled(false)
+//                setOrientationLocked(false)
+//                setCaptureActivity(QRScanner::class.java)
+//                setDesiredBarcodeFormats(ScanOptions.QR_CODE)
+//                setCameraId(0)
+//            }
+//            qrScannerLauncher.launch(options)
+//        }
+        QRSubmissionDialog(
+            task = task,
+            onDismiss = { selectedQRTask = null },
+            onSubmitQR = { qrContent ->
+                vm.submitQRAnswer(task.id, qrContent, context)
+                Toast.makeText(context, "QR code submitted!", Toast.LENGTH_SHORT).show()
+                selectedQRTask = null
             }
         )
     }
@@ -516,6 +553,87 @@ private fun PhotoSubmissionDialog(
                 onClick = { if (!isSubmitting) onDismiss() },
                 enabled = !isSubmitting
             ) {
+                Text("Cancel", color = Maroon)
+            }
+        }
+    )
+}
+
+@Composable
+private fun QRSubmissionDialog(
+    task: TaskUi,
+    onDismiss: () -> Unit,
+    onSubmitQR: (String) -> Unit
+) {
+    val context = LocalContext.current
+    var scanning by remember { mutableStateOf(false) }
+
+    val scannerLauncher = rememberLauncherForActivityResult(ScanContract()) { result ->
+        scanning = false
+        if (result.contents != null) {
+            onSubmitQR(result.contents)
+            onDismiss()
+        }
+    }
+
+    AlertDialog(
+        onDismissRequest = { if (!scanning) onDismiss() },
+        containerColor = Color(0xFFF3ECE7),
+        shape = RoundedCornerShape(16.dp),
+        title = { Text(task.name, fontWeight = FontWeight.Bold, color = Black) },
+        text = {
+            Column {
+                if (task.description.isNotBlank()) {
+                    Text(task.description, color = Color.Gray)
+                    Spacer(Modifier.height(12.dp))
+                }
+                Text("Points: ${task.points}", color = Maroon)
+                Spacer(Modifier.height(16.dp))
+
+                if (scanning) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(120.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        CircularProgressIndicator()
+                        Spacer(Modifier.height(8.dp))
+                    }
+                } else {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(120.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text("Press Scan to scan and submit the QR code", color = Color.Gray)
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = {
+                    scanning = true
+                    val options = ScanOptions().apply {
+                        setPrompt("Scan the QR code for: ${task.name}")
+                        setBeepEnabled(false)
+                        setOrientationLocked(false)
+                        setCaptureActivity(QRScanner::class.java)
+                        setDesiredBarcodeFormats(ScanOptions.QR_CODE)
+                        setCameraId(0)
+                    }
+                    scannerLauncher.launch(options)
+                },
+                enabled = !scanning,
+                colors = ButtonDefaults.buttonColors(containerColor = Maroon)
+            ) {
+                Text(if (scanning) "Scanning..." else "Scan & Submit", color = White)
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = { if (!scanning) onDismiss() }) {
                 Text("Cancel", color = Maroon)
             }
         }
