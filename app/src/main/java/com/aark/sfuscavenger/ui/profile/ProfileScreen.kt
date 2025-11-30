@@ -15,8 +15,10 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.AlertDialog
@@ -58,6 +60,12 @@ import com.aark.sfuscavenger.ui.login.AuthViewModel
 import com.aark.sfuscavenger.ui.theme.AppColors
 import com.aark.sfuscavenger.ui.theme.Maroon
 import com.aark.sfuscavenger.ui.theme.White
+import androidx.compose.ui.platform.LocalContext
+import androidx.core.content.FileProvider
+import java.io.File
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 @Composable
 fun ProfileScreen(
@@ -273,6 +281,10 @@ fun ProfileSettingsDialog(
         mutableStateOf(false)
     }
     
+    val context = LocalContext.current
+    var tempImageUri by rememberSaveable { mutableStateOf<Uri?>(null) }
+    var showImageSourceSelection by remember { mutableStateOf(false) }
+
     val imagePickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
     ) { uri ->
@@ -281,10 +293,89 @@ fun ProfileSettingsDialog(
             removePhoto = false
         }
     }
+
+    val cameraLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.TakePicture()
+    ) { success ->
+        if (success && tempImageUri != null) {
+            localImageUri = tempImageUri
+            removePhoto = false
+        }
+    }
+
+    fun createTempPictureUri(): Uri {
+        val timeStamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
+        val imageFileName = "JPEG_" + timeStamp + "_"
+        val file = File.createTempFile(imageFileName, ".jpg", context.cacheDir)
+        return FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
+    }
+
     val previewImage = when {
         localImageUri != null -> localImageUri.toString()
         removePhoto -> null
         else -> currentState.profilePicture
+    }
+
+    if (showImageSourceSelection) {
+        AlertDialog(
+            onDismissRequest = { showImageSourceSelection = false },
+            title = { 
+                Text(
+                    "Choose Image Source",
+                    fontWeight = FontWeight.Bold,
+                    color = Color.Black
+                ) 
+            },
+            text = {
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Button(
+                        onClick = {
+                            showImageSourceSelection = false
+                            try {
+                                tempImageUri = createTempPictureUri()
+                                cameraLauncher.launch(tempImageUri!!)
+                            } catch (e: Exception) {
+                                e.printStackTrace()
+                            }
+                        },
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Maroon,
+                            contentColor = White
+                        ),
+                        modifier = Modifier.fillMaxWidth()
+                    ) { 
+                        Text("Camera") 
+                    }
+                    Button(
+                        onClick = {
+                            showImageSourceSelection = false
+                            imagePickerLauncher.launch("image/*")
+                        },
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Maroon,
+                            contentColor = White
+                        ),
+                        modifier = Modifier.fillMaxWidth()
+                    ) { 
+                        Text("Gallery") 
+                    }
+                }
+            },
+            confirmButton = {},
+            dismissButton = {
+                TextButton(
+                    onClick = { showImageSourceSelection = false },
+                    colors = ButtonDefaults.textButtonColors(contentColor = AppColors.Red),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("Cancel")
+                }
+            },
+            containerColor = Color(0xFFFEFAF4),
+            shape = RoundedCornerShape(28.dp)
+        )
     }
 
     AlertDialog(
@@ -306,38 +397,33 @@ fun ProfileSettingsDialog(
                 colors = ButtonDefaults.buttonColors(
                     containerColor = Maroon,
                     contentColor = White
-                ),
-                modifier = Modifier.fillMaxWidth()
+                )
             ) {
                 Text("Save")
             }
         },
         dismissButton = {
-            Column(
-                modifier = Modifier.fillMaxWidth()
+            TextButton(
+                onClick = onDismiss,
+                colors = ButtonDefaults.textButtonColors(contentColor = AppColors.Red)
             ) {
-                OutlinedButton(
-                    onClick = onLogout,
-                    colors = ButtonDefaults.outlinedButtonColors(contentColor = Maroon),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text("Log Out")
-                }
-                Spacer(modifier = Modifier.height(8.dp))
-                TextButton(
-                    onClick = onDismiss,
-                    colors = ButtonDefaults.textButtonColors(contentColor = AppColors.Red),
-                    modifier = Modifier.align(Alignment.CenterHorizontally)
-                ) {
-                    Text("Cancel")
-                }
+                Text("Cancel")
             }
         },
-        title = { Text("Edit Profile") },
+        title = { 
+            Text(
+                "Edit Profile",
+                fontWeight = FontWeight.Bold,
+                color = Color.Black
+            ) 
+        },
         containerColor = Color(0xFFFEFAF4),
         shape = RoundedCornerShape(28.dp),
         text = {
             Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 Column(
@@ -381,14 +467,14 @@ fun ProfileSettingsDialog(
                             .padding(top = 12.dp)
                     ) {
                         Button(
-                            onClick = { imagePickerLauncher.launch("image/*") },
+                            onClick = { showImageSourceSelection = true },
                             colors = ButtonDefaults.buttonColors(
                                 containerColor = Maroon,
                                 contentColor = White
                             ),
                             modifier = Modifier.weight(1f)
                         ) {
-                            Text("Choose Photo")
+                            Text("Change Photo")
                         }
                         OutlinedButton(
                             onClick = {
@@ -404,20 +490,88 @@ fun ProfileSettingsDialog(
                     }
                 }
 
-                OutlinedTextField(
+                TextField(
                     value = displayNameInput,
                     onValueChange = { displayNameInput = it },
-                    label = { Text("Display Name") },
+                    label = { 
+                        Text(
+                            "Display Name",
+                            color = Maroon,
+                            fontWeight = FontWeight.SemiBold
+                        ) 
+                    },
                     singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
+                    shape = RoundedCornerShape(4.dp),
+                    colors = androidx.compose.material3.TextFieldDefaults.colors(
+                        focusedContainerColor = Color(0xFFFEFAF4),
+                        unfocusedContainerColor = Color(0xFFFEFAF4),
+                        disabledContainerColor = Color(0xFFFEFAF4),
+                        errorContainerColor = Color(0xFFFEFAF4),
+                        focusedIndicatorColor = Color.Transparent,
+                        unfocusedIndicatorColor = Color.Transparent,
+                        disabledIndicatorColor = Color.Transparent,
+                        errorIndicatorColor = Color.Transparent,
+                        focusedLabelColor = Maroon,
+                        unfocusedLabelColor = Maroon,
+                        focusedTextColor = Color.Black,
+                        unfocusedTextColor = Color.Black,
+                        cursorColor = Maroon
+                    ),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .border(
+                            width = 1.dp,
+                            color = Maroon,
+                            shape = RoundedCornerShape(4.dp)
+                        )
                 )
-                OutlinedTextField(
+                TextField(
                     value = usernameInput,
                     onValueChange = { usernameInput = it },
-                    label = { Text("Username") },
+                    label = { 
+                        Text(
+                            "Username",
+                            color = Maroon,
+                            fontWeight = FontWeight.SemiBold
+                        ) 
+                    },
                     singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
+                    shape = RoundedCornerShape(4.dp),
+                    colors = androidx.compose.material3.TextFieldDefaults.colors(
+                        focusedContainerColor = Color(0xFFFEFAF4),
+                        unfocusedContainerColor = Color(0xFFFEFAF4),
+                        disabledContainerColor = Color(0xFFFEFAF4),
+                        errorContainerColor = Color(0xFFFEFAF4),
+                        focusedIndicatorColor = Color.Transparent,
+                        unfocusedIndicatorColor = Color.Transparent,
+                        disabledIndicatorColor = Color.Transparent,
+                        errorIndicatorColor = Color.Transparent,
+                        focusedLabelColor = Maroon,
+                        unfocusedLabelColor = Maroon,
+                        focusedTextColor = Color.Black,
+                        unfocusedTextColor = Color.Black,
+                        cursorColor = Maroon
+                    ),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .border(
+                            width = 1.dp,
+                            color = Maroon,
+                            shape = RoundedCornerShape(4.dp)
+                        )
                 )
+                
+                OutlinedButton(
+                    onClick = onLogout,
+                    colors = ButtonDefaults.outlinedButtonColors(
+                        containerColor = Color.Transparent,
+                        contentColor = AppColors.Red
+                    ),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, AppColors.Red),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("Log Out")
+                }
 
             }
         }

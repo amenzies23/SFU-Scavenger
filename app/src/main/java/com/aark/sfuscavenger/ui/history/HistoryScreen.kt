@@ -1,6 +1,7 @@
 package com.aark.sfuscavenger.ui.history
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.clickable
 import android.net.Uri
@@ -110,7 +111,7 @@ private fun HistoryHeader(
     var showSearchBar by rememberSaveable { mutableStateOf(false) }
     val uiState by viewModel.uiState.collectAsState()
     val searchQuery = uiState.searchQuery
-    
+
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -136,17 +137,17 @@ private fun HistoryHeader(
                 )
             }
         }
-        
+
         // Show search bar when toggled
         if (showSearchBar) {
             TextField(
                 value = searchQuery,
                 onValueChange = { viewModel.setSearchQuery(it) },
-                placeholder = { 
+                placeholder = {
                     Text(
                         "Search game name...",
                         color = Color.Gray
-                    ) 
+                    )
                 },
                 leadingIcon = {
                     Icon(
@@ -191,17 +192,17 @@ fun HistorySearchBar(
     var showSearchBar by rememberSaveable { mutableStateOf(false) }
     val uiState by viewModel.uiState.collectAsState()
     val searchQuery = uiState.searchQuery
-    
+
     if (showSearchBar) {
         // Search bar
         TextField(
             value = searchQuery,
             onValueChange = { viewModel.setSearchQuery(it) },
-            placeholder = { 
+            placeholder = {
                 Text(
                     "Search game name...",
                     color = Color.Gray
-                ) 
+                )
             },
             leadingIcon = {
                 Icon(
@@ -221,7 +222,7 @@ fun HistorySearchBar(
                             )
                         }
                     }
-                    IconButton(onClick = { 
+                    IconButton(onClick = {
                         showSearchBar = false
                         viewModel.setSearchQuery("")
                     }) {
@@ -350,37 +351,42 @@ private fun HistoryCardItem(
     card: HistoryCard,
     onClick: () -> Unit
 ) {
-    val shape = RoundedCornerShape(24.dp)
+    val shape = RoundedCornerShape(18.dp)
     val interactionSource = remember { MutableInteractionSource() }
     Surface(
         modifier = Modifier
             .fillMaxWidth()
-            .shadow(elevation = 8.dp, shape = shape, clip = false)
+            .shadow(elevation = 0.dp, shape = shape, clip = false)
             .clip(shape)
             .clickable(
                 interactionSource = interactionSource,
                 indication = LocalIndication.current,
                 onClick = onClick
+            )
+            .border(
+                width = 1.dp,
+                color = Color(0xFFE1D5CD),
+                shape = shape
             ),
-        color = Color(0xFFFDF8F2)
+        color = Color.White.copy(alpha = 0.8f)
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 20.dp, vertical = 18.dp),
+                .padding(horizontal = 14.dp, vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
                 text = card.title,
                 style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
+                fontWeight = FontWeight.SemiBold,
                 modifier = Modifier.weight(1f)
             )
             Text(
                 text = card.placement,
-                color = Maroon,
+                color = Color.Gray,
                 style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.Bold
+                fontWeight = FontWeight.Normal
             )
         }
     }
