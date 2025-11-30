@@ -48,22 +48,23 @@ import com.aark.sfuscavenger.ui.theme.Maroon
 fun ResultsScreen(
     navController: NavController,
     gameId: String,
-    teamId: String?
+    teamId: String?,
+    onBackToHome: () -> Unit = {}
 ) {
     val gameRepository = remember { GameRepository() }
     val teamRepository = remember { TeamRepository() }
     val userRepository = remember { UserRepository() }
     val auth = remember { FirebaseAuth.getInstance() }
-    
+
     var gameName by remember { mutableStateOf<String?>(null) }
     var placement by remember { mutableStateOf<String?>(null) }
     var score by remember { mutableStateOf<Int?>(null) }
     var teamMembers by remember { mutableStateOf<List<User>>(emptyList()) }
-    
+
     LaunchedEffect(gameId, teamId) {
         val game = gameRepository.getGame(gameId)
         gameName = game?.name?.ifBlank { "Untitled Game" }
-        
+
         if (teamId != null && teamId != "none") {
             // Get team summary for placement and score
             val teamSummary = teamRepository.getTeamSummary(gameId, teamId)
@@ -79,7 +80,7 @@ fun ResultsScreen(
                 "N/A"
             }
             score = teamSummary?.score
-            
+
             // Get all team members
             val membersMap = teamRepository.getTeamMembersWithUserObject(gameId, teamId)
             teamMembers = membersMap.values.toList()
@@ -96,7 +97,7 @@ fun ResultsScreen(
             }
         }
     }
-    
+
     val background = Brush.verticalGradient(
         listOf(Color(0xFFF7F1EA), Color(0xFFF1E5DB))
     )
@@ -117,7 +118,7 @@ fun ResultsScreen(
             item {
                 ResultsTopBar(
                     title = gameName ?: "Game summary",
-                    onBack = { navController.popBackStack() }
+                    onBack = onBackToHome
                 )
             }
 
@@ -180,14 +181,14 @@ fun ResultsScreen(
             item {
                 Spacer(modifier = Modifier.height(12.dp))
                 Button(
-                    onClick = { navController.popBackStack() },
+                    onClick = onBackToHome,
                     modifier = Modifier.fillMaxWidth(),
                     colors = ButtonDefaults.buttonColors(
                         containerColor = Maroon,
                         contentColor = Color.White
                     )
                 ) {
-                    Text("Back to history")
+                    Text("Back to Home")
                 }
             }
         }
@@ -273,5 +274,3 @@ private fun TeamMemberRow(user: User) {
         )
     }
 }
-
-
