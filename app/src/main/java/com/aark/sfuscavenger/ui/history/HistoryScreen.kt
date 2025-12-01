@@ -57,6 +57,7 @@ import com.aark.sfuscavenger.ui.theme.LightBeige
 import com.aark.sfuscavenger.ui.theme.Maroon
 import com.aark.sfuscavenger.ui.theme.ScavengerLoader
 import com.aark.sfuscavenger.ui.theme.ScavengerText
+import com.aark.sfuscavenger.ui.theme.ScavengerBackgroundBrush
 
 @Composable
 fun HistoryScreen(
@@ -64,10 +65,7 @@ fun HistoryScreen(
     viewModel: HistoryViewModel = viewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
-    val background = Brush.verticalGradient(
-        listOf(Color(0xFFF7F1EA), Color(0xFFF1E5DB))
-    )
-
+    
     // refresh whenever go to another screen
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
@@ -81,7 +79,7 @@ fun HistoryScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(background)
+            .background(ScavengerBackgroundBrush)
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
             HistoryHeader(viewModel = viewModel)

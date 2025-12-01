@@ -20,6 +20,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -37,6 +38,7 @@ import com.google.maps.android.compose.Marker
 import com.google.maps.android.compose.rememberMarkerState
 import java.text.SimpleDateFormat
 import java.util.Locale
+import com.aark.sfuscavenger.ui.theme.ScavengerBackgroundBrush
 
 @Composable
 fun HomeScreen(
@@ -45,11 +47,11 @@ fun HomeScreen(
 ) {
     val mapGames = vm.mapGames
     var selectedGameForJoin by remember { mutableStateOf<Game?>(null) }
-
+    
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFFF3ECE7))
+            .background(ScavengerBackgroundBrush)
             .padding(16.dp)
     ) {
         Spacer(modifier = Modifier.height(16.dp))

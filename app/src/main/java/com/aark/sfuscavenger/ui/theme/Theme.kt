@@ -13,9 +13,14 @@ import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
+
+val ScavengerBackgroundBrush = Brush.verticalGradient(
+    listOf(Color(0xFFF7F1EA), Color(0xFFF1E5DB))
+)
 
 private val DarkColorScheme = darkColorScheme(
     primary = Purple80,
