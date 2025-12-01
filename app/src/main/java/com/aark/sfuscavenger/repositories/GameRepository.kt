@@ -7,20 +7,26 @@ import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FieldPath
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.GeoPoint
+import com.google.firebase.firestore.ListenerRegistration
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.tasks.await
 import kotlin.random.Random
 import kotlinx.coroutines.channels.awaitClose
+import android.util.Log
 
 /**
  * Sample GameRepository to get an idea of how to interact with Firebase Firestore
  * This isn't set in stone, we likely want to change a lot of things, its just to give an idea of
  * how to interact with Firebase / Firestore
  * */
+
 class GameRepository(
     private val db: FirebaseFirestore = FirebaseFirestore.getInstance(),
     private val auth: FirebaseAuth = FirebaseAuth.getInstance()
 ) {
+    companion object {
+        private const val TAG = "GameRepository"
+    }
 
     private val gamesCollection = db.collection("games")
 
@@ -78,6 +84,7 @@ class GameRepository(
 
     // Get a single game by its document id.
     suspend fun getGame(gameId: String): Game? {
+        Log.d(TAG, "getGame called for gameId=$gameId")
         val snapshot = gamesCollection.document(gameId).get().await()
         if (!snapshot.exists()) return null
 
@@ -89,6 +96,7 @@ class GameRepository(
 
     // Get all games
     suspend fun getAllGames(): List<Game> {
+        Log.d(TAG, "getAllGames() called")
         val snapshot = gamesCollection.get().await()
         if (snapshot.isEmpty) return emptyList()
 
@@ -104,18 +112,43 @@ class GameRepository(
     }
 
     fun observeGames() = callbackFlow<List<Game>> {
-        val listener = gamesCollection.addSnapshotListener { snapshot, error ->
-            if (error != null) {
-                close(error)
-                return@addSnapshotListener
+        var registration: ListenerRegistration? = null
+
+        fun attachListener() {
+            if (registration != null) return
+            registration = gamesCollection.addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    close(error)
+                    return@addSnapshotListener
+                }
+                val list = snapshot?.documents?.mapNotNull { doc ->
+                    doc.toObject(Game::class.java)?.copy(id = doc.id)
+                } ?: emptyList()
+                trySend(list)
             }
-            val list = snapshot?.documents?.mapNotNull { doc ->
-                doc.toObject(Game::class.java)?.copy(id = doc.id)
-            } ?: emptyList()
-            trySend(list)
         }
+
+        val authListener = FirebaseAuth.AuthStateListener { firebaseAuth ->
+            if (firebaseAuth.currentUser == null) {
+                registration?.remove()
+                registration = null
+                trySend(emptyList())
+            } else {
+                attachListener()
+            }
+        }
+
+        if (auth.currentUser != null) {
+            attachListener()
+        } else {
+            trySend(emptyList())
+        }
+
+        auth.addAuthStateListener(authListener)
+
         awaitClose {
-            listener.remove()
+            registration?.remove()
+            auth.removeAuthStateListener(authListener)
         }
     }
 
@@ -150,7 +183,9 @@ class GameRepository(
     }
 
     suspend fun deleteGame(gameId: String) {
+        Log.d(TAG, "deleteGame() for $gameId")
         gamesCollection.document(gameId).delete().await()
+        Log.d(TAG, "Game deleted successfully")
     }
 
     suspend fun updateGame(game: Game) {
@@ -178,7 +213,9 @@ class GameRepository(
             .get()
             .await()
 
-        if (membershipsSnap.isEmpty) return emptyList()
+        if (membershipsSnap.isEmpty) {
+            return emptyList()
+        }
 
         val gameIds = membershipsSnap.documents.map { it.id }
 
@@ -207,6 +244,7 @@ class GameRepository(
     }
 
     suspend fun publishGame(gameId: String, status: String) {
+        Log.d(TAG, "publishGame() -> $gameId setting status=$status")
         gamesCollection.document(gameId)
             .update(
                 mapOf(

@@ -1,8 +1,13 @@
 package com.aark.sfuscavenger.ui.profile
 
+import android.Manifest
 import android.net.Uri
+import android.os.Build
+import android.widget.Toast
+import android.content.pm.PackageManager
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -27,7 +32,6 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.TextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -60,8 +64,10 @@ import com.aark.sfuscavenger.ui.login.AuthViewModel
 import com.aark.sfuscavenger.ui.theme.AppColors
 import com.aark.sfuscavenger.ui.theme.ScavengerDialog
 import com.aark.sfuscavenger.ui.theme.Maroon
+import com.aark.sfuscavenger.ui.theme.ScavengerTextField
 import com.aark.sfuscavenger.ui.theme.White
 import androidx.compose.ui.platform.LocalContext
+import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
 import java.io.File
 import java.text.SimpleDateFormat
@@ -135,6 +141,7 @@ fun ProfileInformation(profileState: ProfileState) {
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         // Determine background color for profile picture
+        // if no profile picture, it is red.
         val profileBackgroundColor: Color
         if (profileState.profilePicture.isNullOrEmpty()) {
             profileBackgroundColor = AppColors.Red
@@ -234,7 +241,7 @@ fun ProfileInformation(profileState: ProfileState) {
                             .clip(RoundedCornerShape(16.dp))
                     )
                     
-                    // Text showing XP / Max XP (centered in bar for visibility)
+                    // Text showing XP / Max XP 
                     Text(
                         text = "${profileState.totalXP} / ${maxXP} xp",
                         fontSize = 12.sp,
@@ -286,6 +293,63 @@ fun ProfileSettingsDialog(
     var tempImageUri by rememberSaveable { mutableStateOf<Uri?>(null) }
     var showImageSourceSelection by remember { mutableStateOf(false) }
 
+    var pendingPermissionAction by remember { mutableStateOf<(() -> Unit)?>(null) }
+    var pendingPermissionDeniedMessage by remember { mutableStateOf<String?>(null) }
+
+    val permissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestMultiplePermissions()
+    ) { permissions ->
+        val granted = permissions.values.all { it }
+        val action = pendingPermissionAction
+        val deniedMessage = pendingPermissionDeniedMessage
+        pendingPermissionAction = null
+        pendingPermissionDeniedMessage = null
+
+        if (granted) {
+            action?.invoke()
+        } else {
+            deniedMessage?.let {
+                Toast.makeText(context, it, Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+    // ask user for permissions
+    fun requestPermissions(
+        permissions: Array<String>,
+        deniedMessage: String,
+        onGranted: () -> Unit
+    ) {
+        if (permissions.isEmpty()) {
+            onGranted()
+            return
+        }
+
+        val missingPermissions = permissions.filter {
+            ContextCompat.checkSelfPermission(context, it) != PackageManager.PERMISSION_GRANTED
+        }
+
+        if (missingPermissions.isEmpty()) {
+            onGranted()
+
+        } else {
+            pendingPermissionAction = onGranted
+            pendingPermissionDeniedMessage = deniedMessage
+            permissionLauncher.launch(permissions)
+        }
+    }
+
+    val cameraPermissions = arrayOf(Manifest.permission.CAMERA)
+
+    @Suppress("DEPRECATION")
+    val galleryPermissions = arrayOf(
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU)
+            Manifest.permission.READ_MEDIA_IMAGES
+        else
+            Manifest.permission.READ_EXTERNAL_STORAGE
+    )
+
+
     val imagePickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
     ) { uri ->
@@ -311,6 +375,21 @@ fun ProfileSettingsDialog(
         return FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
     }
 
+    val openCamera: () -> Unit = {
+        showImageSourceSelection = false
+        try {
+            tempImageUri = createTempPictureUri()
+            cameraLauncher.launch(tempImageUri!!)
+        } catch (e: Exception) {
+            Toast.makeText(context, "Unable to open camera.", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    val openGallery: () -> Unit = {
+        showImageSourceSelection = false
+        imagePickerLauncher.launch("image/*")
+    }
+
     val previewImage = when {
         localImageUri != null -> localImageUri.toString()
         removePhoto -> null
@@ -327,13 +406,11 @@ fun ProfileSettingsDialog(
                 ) {
                     Button(
                         onClick = {
-                            showImageSourceSelection = false
-                            try {
-                                tempImageUri = createTempPictureUri()
-                                cameraLauncher.launch(tempImageUri!!)
-                            } catch (e: Exception) {
-                                e.printStackTrace()
-                            }
+                            requestPermissions(
+                                cameraPermissions,
+                                "Camera permission is required to take a photo.",
+                                openCamera
+                            )
                         },
                         colors = ButtonDefaults.buttonColors(
                             containerColor = Maroon,
@@ -345,8 +422,11 @@ fun ProfileSettingsDialog(
                     }
                     Button(
                         onClick = {
-                            showImageSourceSelection = false
-                            imagePickerLauncher.launch("image/*")
+                            requestPermissions(
+                                galleryPermissions,
+                                "Photo access is required to choose from gallery.",
+                                openGallery
+                            )
                         },
                         colors = ButtonDefaults.buttonColors(
                             containerColor = Maroon,
@@ -377,15 +457,13 @@ fun ProfileSettingsDialog(
         confirmButton = {
             Button(
                 onClick = {
-                    // Save profile (this will upload image to Firebase Storage)
+                    // Save profile (uploads to firebase)
                     onSave(
                         displayNameInput.trim(),
                         usernameInput.trim(),
                         localImageUri,
                         removePhoto
                     )
-                    // Dismiss dialog after save is initiated
-                    // The upload happens asynchronously in the background
                     onDismiss()
                 },
                 colors = ButtonDefaults.buttonColors(
@@ -467,7 +545,11 @@ fun ProfileSettingsDialog(
                                 removePhoto = true
                             },
                             enabled = previewImage != null,
-                            colors = ButtonDefaults.outlinedButtonColors(contentColor = Maroon),
+                            colors = ButtonDefaults.outlinedButtonColors(
+                                containerColor = Color.Transparent,
+                                contentColor = Maroon
+                            ),
+                            border = BorderStroke(1.dp, Maroon),
                             modifier = Modifier.weight(1f)
                         ) {
                             Text("Remove")
@@ -475,84 +557,27 @@ fun ProfileSettingsDialog(
                     }
                 }
 
-                TextField(
+                ScavengerTextField(
                     value = displayNameInput,
                     onValueChange = { displayNameInput = it },
-                    label = { 
-                        Text(
-                            "Display Name",
-                            color = Maroon,
-                            fontWeight = FontWeight.SemiBold
-                        ) 
-                    },
-                    singleLine = true,
-                    shape = RoundedCornerShape(4.dp),
-                    colors = androidx.compose.material3.TextFieldDefaults.colors(
-                        focusedContainerColor = Color(0xFFFEFAF4),
-                        unfocusedContainerColor = Color(0xFFFEFAF4),
-                        disabledContainerColor = Color(0xFFFEFAF4),
-                        errorContainerColor = Color(0xFFFEFAF4),
-                        focusedIndicatorColor = Color.Transparent,
-                        unfocusedIndicatorColor = Color.Transparent,
-                        disabledIndicatorColor = Color.Transparent,
-                        errorIndicatorColor = Color.Transparent,
-                        focusedLabelColor = Maroon,
-                        unfocusedLabelColor = Maroon,
-                        focusedTextColor = Color.Black,
-                        unfocusedTextColor = Color.Black,
-                        cursorColor = Maroon
-                    ),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .border(
-                            width = 1.dp,
-                            color = Maroon,
-                            shape = RoundedCornerShape(4.dp)
-                        )
+                    label = "Display Name",
+                    placeholder = "Display Name",
+                    modifier = Modifier.fillMaxWidth()
                 )
-                TextField(
+                ScavengerTextField(
                     value = usernameInput,
                     onValueChange = { usernameInput = it },
-                    label = { 
-                        Text(
-                            "Username",
-                            color = Maroon,
-                            fontWeight = FontWeight.SemiBold
-                        ) 
-                    },
-                    singleLine = true,
-                    shape = RoundedCornerShape(4.dp),
-                    colors = androidx.compose.material3.TextFieldDefaults.colors(
-                        focusedContainerColor = Color(0xFFFEFAF4),
-                        unfocusedContainerColor = Color(0xFFFEFAF4),
-                        disabledContainerColor = Color(0xFFFEFAF4),
-                        errorContainerColor = Color(0xFFFEFAF4),
-                        focusedIndicatorColor = Color.Transparent,
-                        unfocusedIndicatorColor = Color.Transparent,
-                        disabledIndicatorColor = Color.Transparent,
-                        errorIndicatorColor = Color.Transparent,
-                        focusedLabelColor = Maroon,
-                        unfocusedLabelColor = Maroon,
-                        focusedTextColor = Color.Black,
-                        unfocusedTextColor = Color.Black,
-                        cursorColor = Maroon
-                    ),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .border(
-                            width = 1.dp,
-                            color = Maroon,
-                            shape = RoundedCornerShape(4.dp)
-                        )
+                    label = "Username",
+                    placeholder = "Username",
+                    modifier = Modifier.fillMaxWidth()
                 )
                 
-                OutlinedButton(
+                Button(
                     onClick = onLogout,
-                    colors = ButtonDefaults.outlinedButtonColors(
-                        containerColor = Color.Transparent,
-                        contentColor = AppColors.Red
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = AppColors.Red,
+                        contentColor = White
                     ),
-                    border = androidx.compose.foundation.BorderStroke(1.dp, AppColors.Red),
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Text("Log Out")
@@ -683,55 +708,16 @@ private fun AddFriendDialogContent(
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     // Text field with red outline and beige background
-                    TextField(
+                    ScavengerTextField(
                         value = usernameInput,
                         onValueChange = { 
                             onUsernameInputChange(it)
-                            // Clear error when user starts typing
-                            if (addFriendError != null) {
-                                onClearError()
-                            }
+                            if (addFriendError != null) onClearError()
                         },
-                        label = { 
-                            Text(
-                                "Username",
-                                color = if (addFriendError != null) AppColors.Red else Maroon,
-                                fontWeight = FontWeight.SemiBold
-                            ) 
-                        },
-                        placeholder = { 
-                            Text(
-                                "Enter username",
-                                color = Color.Gray
-                            ) 
-                        },
-                        singleLine = true,
-                        isError = addFriendError != null,
-                        shape = RoundedCornerShape(4.dp),
-                        colors = androidx.compose.material3.TextFieldDefaults.colors(
-                            focusedContainerColor = Color(0xFFFEFAF4),
-                            unfocusedContainerColor = Color(0xFFFEFAF4),
-                            disabledContainerColor = Color(0xFFFEFAF4),
-                            errorContainerColor = Color(0xFFFEFAF4),
-                            focusedIndicatorColor = Color.Transparent,
-                            unfocusedIndicatorColor = Color.Transparent,
-                            disabledIndicatorColor = Color.Transparent,
-                            errorIndicatorColor = Color.Transparent,
-                            focusedLabelColor = Maroon,
-                            unfocusedLabelColor = Maroon,
-                            errorLabelColor = AppColors.Red,
-                            focusedTextColor = Color.Black,
-                            unfocusedTextColor = Color.Black,
-                            errorTextColor = Color.Black,
-                            cursorColor = Maroon
-                        ),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .border(
-                                width = 1.dp,
-                                color = if (addFriendError != null) AppColors.Red else Maroon,
-                                shape = RoundedCornerShape(4.dp)
-                            )
+                        label = "Username",
+                        placeholder = "Enter username",
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true
                     )
                     // Show error message if there is one
                     if (addFriendError != null) {
