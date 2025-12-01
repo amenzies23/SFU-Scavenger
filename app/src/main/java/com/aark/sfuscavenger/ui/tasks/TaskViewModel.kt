@@ -271,11 +271,16 @@ class TaskViewModel(
                     )
                 }
 
+                val sortedTasks = taskUiList.sortedWith(
+                    compareBy<TaskUi> { it.isCompleted }
+                        .thenBy { it.isPending }
+                )
+
                 _state.update {
                     it.copy(
                         loading = false,
-                        tasks = taskUiList,
-                        completedCount = taskUiList.count { t -> t.isCompleted }
+                        tasks = sortedTasks,
+                        completedCount = sortedTasks.count { t -> t.isCompleted }
                     )
                 }
 
