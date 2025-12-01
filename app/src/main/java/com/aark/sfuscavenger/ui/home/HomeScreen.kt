@@ -1,6 +1,7 @@
 package com.aark.sfuscavenger.ui.home
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -68,7 +69,8 @@ fun HomeScreen(
             games = mapGames,
             modifier = Modifier
                 .fillMaxWidth()
-                .weight(1f),
+                .weight(1f)
+                .border(2.dp, Color(0xFFE1D5CD), shape = RoundedCornerShape(10.dp)),
             onGameMarkerClick = { game ->
                 selectedGameForJoin = game
             }
