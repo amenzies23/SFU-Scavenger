@@ -18,15 +18,23 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.PrimaryTabRow
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Tab
+import androidx.compose.material3.TabRow
 import androidx.compose.material3.TabRowDefaults
+import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.TopAppBarScrollBehavior
+import androidx.compose.material3.rememberTopAppBarState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
@@ -48,24 +56,30 @@ import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
+import com.aark.sfuscavenger.ui.theme.Beige
 import com.aark.sfuscavenger.ui.theme.Black
 import com.aark.sfuscavenger.ui.theme.LightBeige
 import com.aark.sfuscavenger.ui.theme.Maroon
 import com.aark.sfuscavenger.ui.theme.SFUScavengerTheme
 import com.aark.sfuscavenger.ui.theme.White
+import com.aark.sfuscavenger.ui.components.TopBar
 import com.aark.sfuscavenger.ui.theme.DarkOrange
 import com.aark.sfuscavenger.ui.theme.ScavengerBackgroundBrush
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.HorizontalDivider
 
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun EventsScreen(navController: NavController, vm: EventsViewModel = viewModel()) {
     val selectedTab = remember { mutableIntStateOf(0) }
+    val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior(
+        state = rememberTopAppBarState()
+    )
 
     Box(
         modifier = Modifier
@@ -75,6 +89,7 @@ fun EventsScreen(navController: NavController, vm: EventsViewModel = viewModel()
         EventsContent(
             selectedTabIndex = selectedTab.intValue,
             onTabSelected = { selectedTab.intValue = it },
+            scrollBehavior = scrollBehavior,
             navController = navController,
             modifier = Modifier.fillMaxSize(),
             vm = vm
@@ -87,6 +102,7 @@ fun EventsScreen(navController: NavController, vm: EventsViewModel = viewModel()
 private fun EventsContent(
     selectedTabIndex: Int,
     onTabSelected: (Int) -> Unit,
+    scrollBehavior: TopAppBarScrollBehavior,
     navController: NavController,
     modifier: Modifier = Modifier,
     vm: EventsViewModel
@@ -97,17 +113,21 @@ private fun EventsContent(
         PrimaryTabRow(
             selectedTabIndex = selectedTabIndex,
             containerColor = Color.Transparent,
+            contentColor = Maroon,
             indicator = {
-                TabRowDefaults.PrimaryIndicator(
-                    modifier = Modifier.tabIndicatorOffset(
-                        selectedTabIndex,
-                        matchContentSize = false
-                    ),
-                    width = 64.dp,
-                    color = Maroon
+                Box(
+                    modifier = Modifier
+                        .tabIndicatorOffset(selectedTabIndex, matchContentSize = false)
+                        .height(3.dp)
+                        .fillMaxWidth()
+                        .background(
+                            color = Maroon,
+                            shape = RoundedCornerShape(topStart = 3.dp, topEnd = 3.dp)
+                        )
                 )
-            },
-            divider = {} 
+            }
+,
+            divider = {}
         ) {
             Tab(
                 selected = selectedTabIndex == 0,
@@ -141,7 +161,8 @@ private fun JoinTab(navController: NavController,
     val publicGames = vm.publicGames.collectAsState()
     val privateGames = vm.privateGames.collectAsState()
 //    val loading = vm.loading.collectAsState()
-
+    val error = vm.error.collectAsState()
+    
     val listState = rememberLazyListState()
 
     Column(
@@ -198,7 +219,7 @@ private fun JoinTab(navController: NavController,
         )
 
         Box(modifier = Modifier.padding(horizontal = 16.dp)) {
-            JoinByCodeRow(navController = navController, privateGames = privateGames.value)
+            JoinByCodeRow(navController = navController, privateGames = privateGames.value, onInvalidCode = {})
         }
         
         Spacer(modifier = Modifier.height(16.dp))
@@ -441,6 +462,7 @@ private fun GameRow(
 fun JoinByCodeRow(
     navController: NavController,
     privateGames: List<Game>,
+    onInvalidCode: () -> Unit
 ) {
     var code by remember { mutableStateOf("") }
 
@@ -448,34 +470,34 @@ fun JoinByCodeRow(
         modifier = Modifier
             .padding(vertical = 8.dp)
             .fillMaxWidth()
-            .background(
-                color = LightBeige,
-                shape = RoundedCornerShape(16.dp)
-            ),
+            .clip(RoundedCornerShape(16.dp))
+            .background(LightBeige)
+            .padding(horizontal = 12.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
 
         TextField(
             value = code,
             onValueChange = { code = it },
-            placeholder = { Text("Enter Join code") },
-            shape = RoundedCornerShape(16.dp),
+            placeholder = { Text("Enter Join Code", color = Color.Gray) },
+            shape = RoundedCornerShape(12.dp),
             colors = TextFieldDefaults.colors(
                 focusedIndicatorColor = Color.Transparent,
                 unfocusedIndicatorColor = Color.Transparent,
-                focusedContainerColor = White,
-                unfocusedContainerColor = White,
+                disabledIndicatorColor = Color.Transparent,
+                focusedContainerColor = Color.White,
+                unfocusedContainerColor = Color.White,
+                disabledContainerColor = Color.Transparent,
+                focusedTextColor = Black,
+                unfocusedTextColor = Black,
+                cursorColor = Maroon
             ),
             modifier = Modifier
-                .weight(1f)
-                .background(
-                    color = LightBeige,
-                    shape = RoundedCornerShape(16.dp)
-                ),
+                .weight(1f),
             singleLine = true,
         )
 
-        Spacer(modifier = Modifier.padding(horizontal = 4.dp))
+        Spacer(modifier = Modifier.width(8.dp))
 
         Button(
             onClick = {
@@ -483,7 +505,7 @@ fun JoinByCodeRow(
                 if (match != null && match.status == "live") {
                     navController.navigate("lobby/${match.id}")
                 } else {
-                    // Handle invalid code (e.g., show a message to the user)
+                    onInvalidCode()
                 }
             },
             shape = RoundedCornerShape(16.dp),

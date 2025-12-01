@@ -34,6 +34,7 @@ data class LobbyUiState(
 
     val isHost: Boolean = false,
     val currentUserTeamId: String? = null,
+    val pendingUserTeamId: String? = null,
 
     val joinCode: String = "",
     val teams: List<LobbyTeamUi> = emptyList()
@@ -138,8 +139,20 @@ class LobbyViewModel(
                     viewModelScope.launch {
                         val memberNames = mutableListOf<String>()
                         val memberPhotos = mutableListOf<String?>()
+                        val currentUid = auth.currentUser?.uid
+                        val stateSnapshot = _state.value
+                        val expectedTeamId = stateSnapshot.pendingUserTeamId ?: stateSnapshot.currentUserTeamId
 
                         for (member in members) {
+                            if (
+                                currentUid != null &&
+                                member.userId == currentUid &&
+                                expectedTeamId != null &&
+                                team.id != expectedTeamId
+                            ) {
+                                continue
+                            }
+
                             val userDoc = usersCollection.document(member.userId).get().await()
                             val name = userDoc.getString("displayName")
                                 ?: userDoc.getString("email")
@@ -173,7 +186,12 @@ class LobbyViewModel(
                 val uidTeam = auth.currentUser?.uid?.let {
                     teamRepo.getUserTeamId(gameId)
                 }
-                _state.update { it.copy(currentUserTeamId = uidTeam) }
+                _state.update {
+                    it.copy(
+                        currentUserTeamId = uidTeam,
+                        pendingUserTeamId = null
+                    )
+                }
             }
         }
     }
@@ -183,13 +201,34 @@ class LobbyViewModel(
      */
     fun joinTeam(teamId: String) {
         val gameId = _state.value.gameId ?: return
+        val previousTeamId = _state.value.currentUserTeamId
+
+        _state.update {
+            it.copy(
+                error = null,
+                currentUserTeamId = teamId,
+                pendingUserTeamId = teamId
+            )
+        }
 
         viewModelScope.launch {
             try {
                 teamRepo.joinTeam(gameId, teamId)
-                _state.update { it.copy(currentUserTeamId = teamId, error = null) }
+                _state.update {
+                    it.copy(
+                        currentUserTeamId = teamId,
+                        pendingUserTeamId = null,
+                        error = null
+                    )
+                }
             } catch (e: Exception) {
-                _state.update { it.copy(error = e.message) }
+                _state.update {
+                    it.copy(
+                        error = e.message,
+                        currentUserTeamId = previousTeamId,
+                        pendingUserTeamId = null
+                    )
+                }
             }
         }
     }

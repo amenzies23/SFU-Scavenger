@@ -764,7 +764,9 @@ private fun SubmissionCard(
             if (!submission.textAnswer.isNullOrBlank()) {
                 Spacer(modifier = Modifier.height(12.dp))
                 Surface(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .navigationBarsPadding(),
                     color = Color(0xFFF5F5F5),
                     shape = RoundedCornerShape(8.dp)
                 ) {

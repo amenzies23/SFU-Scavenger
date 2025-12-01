@@ -57,7 +57,7 @@ fun HomeScreen(
         Spacer(modifier = Modifier.height(16.dp))
 
         Text(
-            text = "Games map",
+            text = "Games Map",
             fontSize = 16.sp,
             fontWeight = FontWeight.SemiBold,
             color = Color.Black,

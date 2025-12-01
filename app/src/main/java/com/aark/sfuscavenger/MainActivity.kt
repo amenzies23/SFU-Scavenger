@@ -4,6 +4,7 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.windowInsetsBottomHeight
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
@@ -11,6 +12,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
@@ -41,6 +43,7 @@ import com.aark.sfuscavenger.ui.history.PlacementScreen
 import com.aark.sfuscavenger.ui.chat.ChatScreen
 import android.content.Intent
 import androidx.compose.ui.platform.LocalContext
+import androidx.core.view.WindowCompat
 import com.aark.sfuscavenger.GameActivity
 import com.aark.sfuscavenger.ui.home.HomeScreen
 import com.aark.sfuscavenger.ui.home.HomeViewModel
@@ -48,10 +51,6 @@ import com.aark.sfuscavenger.ui.home.HomeViewModel
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
-        // Make status bar icons dark
-//        val wic = WindowInsetsControllerCompat(window, window.decorView)
-//        wic.isAppearanceLightStatusBars = true
 
         installSplashScreen()
         setContent {
@@ -67,7 +66,6 @@ fun SFUScavengerApp() {
     val state by vm.state.collectAsStateWithLifecycle()
     var showProfileSettings by rememberSaveable { mutableStateOf(false) }
 
-    // Tracking the current route to display in the TopBar component
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
 
@@ -93,6 +91,8 @@ fun SFUScavengerApp() {
         else -> null
     }
 
+    val isLobbyRoute = currentRoute?.startsWith("lobby/") == true
+
     Scaffold(
         topBar = {
             if (topBarTitle != null) {
@@ -108,7 +108,6 @@ fun SFUScavengerApp() {
                     showSettings = (currentRoute == "profile"),
                     onSettingsClick = { showProfileSettings = true },
 
-                    // re-join button
                     showRejoinGame = activeGame != null,
                     onRejoinGame = activeGame?.let { game ->
                         {
@@ -122,8 +121,8 @@ fun SFUScavengerApp() {
             }
         },
         bottomBar = {
-            if (showBottomNavBar(navController)) {
-                BottomNavBar(navController)
+            when {
+                showBottomNavBar(navController) -> BottomNavBar(navController)
             }
         }
     ) { innerPadding ->
@@ -207,7 +206,6 @@ fun SFUScavengerApp() {
         }
     }
 
-    // Navigation depending on login state, also  need to check if Nav graph is ready
     LaunchedEffect(state.isLoggedIn, currentRoute) {
         if (currentRoute != null) {
             val isAuthenticatedRoute = currentRoute == "home" || 
@@ -233,7 +231,6 @@ fun SFUScavengerApp() {
     }
 }
 
-// Determines which screens will have the bottom navigation bar
 @Composable
 fun showBottomNavBar(navController: NavHostController): Boolean {
     val navBackStackEntry by navController.currentBackStackEntryAsState()
