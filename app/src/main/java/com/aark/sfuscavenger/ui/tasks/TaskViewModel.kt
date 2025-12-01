@@ -41,7 +41,10 @@ data class TaskUi(
     val type: String,
     val isCompleted: Boolean = false,
     val isPending: Boolean = false,
-    val isRejected: Boolean = false
+    val isRejected: Boolean = false,
+    val lastSubmissionType: String? = null,
+    val lastSubmissionText: String? = null,
+    val lastSubmissionPhotoPath: String? = null
 )
 
 data class SubmissionUi(
@@ -238,23 +241,33 @@ class TaskViewModel(
 
                 // Map taskId to submission status
                 // get the most recent submission per taskId
-                val taskStatusMap = submissions
+                val latestSubmissionByTask = submissions
                     .groupBy { it.taskId }
                     .mapValues { (_, list) ->
-                        list.maxByOrNull { it.createdAt?.seconds ?: 0 }!!.status
+                        list.maxByOrNull { it.createdAt?.seconds ?: 0 }
                     }
 
                 val taskUiList = tasks.map { task ->
-                    val status = taskStatusMap[task.id]
+                    val latest = latestSubmissionByTask[task.id]
+                    val status = latest?.status
+                    val isApproved = status == "approved" || status == "auto_approved"
+                    val completedSubmission = if (isApproved) latest else null
                     TaskUi(
                         id = task.id,
                         name = task.name,
                         description = task.description,
                         points = task.points,
                         type = task.type,
-                        isCompleted = status == "approved",
+                        isCompleted = isApproved,
                         isPending = status == "pending",
-                        isRejected = status == "rejected"
+                        isRejected = status == "rejected",
+                        lastSubmissionType = completedSubmission?.type,
+                        lastSubmissionText = completedSubmission?.text,
+                        lastSubmissionPhotoPath = if (completedSubmission?.type == "photo") {
+                            completedSubmission.mediaStoragePath
+                        } else {
+                            null
+                        }
                     )
                 }
 

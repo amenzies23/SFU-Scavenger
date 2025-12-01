@@ -71,6 +71,7 @@ fun TaskScreen(
     var selectedTextTask by remember { mutableStateOf<TaskUi?>(null) }
     var selectedPhotoTask by remember { mutableStateOf<TaskUi?>(null) }
     var selectedQRTask by remember { mutableStateOf<TaskUi?>(null) }
+    var selectedCompletedTask by remember { mutableStateOf<TaskUi?>(null) }
     var showEndGameDialog by remember { mutableStateOf(false) }
 
     // When gameId changes or screen loads, start fetching tasks for that game
@@ -152,12 +153,26 @@ fun TaskScreen(
                         PlayerTaskView(
                             state = state,
                             onTaskClick = { task ->
-                                when (task.type) {
-                                    "photo" -> selectedPhotoTask = task
-                                    "text" -> selectedTextTask = task
-                                    "qr" -> selectedQRTask = task
+                                when {
+                                    task.isCompleted -> {
+                                        selectedCompletedTask = task
+                                    }
+                                    task.isPending -> {
+                                        Toast.makeText(
+                                            context,
+                                            "This submission is awaiting approval.",
+                                            Toast.LENGTH_SHORT
+                                        ).show()
+                                    }
                                     else -> {
-                                        selectedTextTask = task
+                                        when (task.type) {
+                                            "photo" -> selectedPhotoTask = task
+                                            "text" -> selectedTextTask = task
+                                            "qr" -> selectedQRTask = task
+                                            else -> {
+                                                selectedTextTask = task
+                                            }
+                                        }
                                     }
                                 }
                             },
@@ -201,6 +216,13 @@ fun TaskScreen(
                 Toast.makeText(context, "QR code submitted!", Toast.LENGTH_SHORT).show()
                 selectedQRTask = null
             }
+        )
+    }
+
+    selectedCompletedTask?.let { task ->
+        CompletedTaskDetailsDialog(
+            task = task,
+            onDismiss = { selectedCompletedTask = null }
         )
     }
 
@@ -303,14 +325,12 @@ private fun TaskCard(
         else -> Color.White
     }
 
-    val isClickable = task.isRejected || (!task.isCompleted && !task.isPending)
-
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = bgColor),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
         shape = RoundedCornerShape(12.dp),
-        onClick = { if (isClickable) onClick() }
+        onClick = onClick
     ) {
         Row(
             modifier = Modifier
@@ -631,6 +651,129 @@ private fun QRSubmissionDialog(
         dismissButton = {
             TextButton(onClick = { if (!scanning) onDismiss() }) {
                 Text("Cancel", color = Maroon)
+            }
+        }
+    )
+}
+
+@Composable
+private fun CompletedTaskDetailsDialog(
+    task: TaskUi,
+    onDismiss: () -> Unit
+) {
+    val photoPath = task.lastSubmissionPhotoPath
+    var photoUrl by remember(photoPath) { mutableStateOf<String?>(null) }
+    var photoError by remember(photoPath) { mutableStateOf<String?>(null) }
+
+    LaunchedEffect(photoPath) {
+        photoUrl = null
+        photoError = null
+        if (!photoPath.isNullOrBlank()) {
+            try {
+                val ref = FirebaseStorage.getInstance().reference.child(photoPath)
+                photoUrl = ref.downloadUrl.await().toString()
+            } catch (e: Exception) {
+                photoError = "Unable to load the submitted photo."
+            }
+        }
+    }
+
+    ScavengerDialog(
+        onDismissRequest = onDismiss,
+        title = "${task.name} completed",
+        text = {
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Text(
+                    text = "Quest",
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = Maroon
+                )
+                Text(
+                    text = task.description.ifBlank { "No quest description was provided for this challenge." },
+                    fontSize = 14.sp,
+                    color = Black
+                )
+
+                Text(
+                    text = "Task type: ${task.type.uppercase()}",
+                    fontSize = 12.sp,
+                    color = Color.Gray
+                )
+
+                if (!task.lastSubmissionText.isNullOrBlank()) {
+                    Surface(
+                        modifier = Modifier.fillMaxWidth(),
+                        color = Color(0xFFF5F5F5),
+                        shape = RoundedCornerShape(8.dp)
+                    ) {
+                        Column(modifier = Modifier.padding(12.dp)) {
+                            Text(
+                                text = "Submitted Answer",
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Medium,
+                                color = Color.Gray
+                            )
+                            Text(
+                                text = task.lastSubmissionText,
+                                fontSize = 14.sp,
+                                color = Black,
+                                modifier = Modifier.padding(top = 4.dp)
+                            )
+                        }
+                    }
+                }
+
+                if (!photoPath.isNullOrBlank()) {
+                    Text(
+                        text = "Submitted Photo",
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = Color.Gray
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    when {
+                        photoUrl != null -> {
+                            AsyncImage(
+                                model = photoUrl,
+                                contentDescription = "Submitted photo preview",
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(220.dp)
+                                    .clip(RoundedCornerShape(10.dp)),
+                                contentScale = ContentScale.Crop
+                            )
+                        }
+                        photoError != null -> {
+                            Text(
+                                text = photoError ?: "",
+                                color = Color.Red,
+                                fontSize = 12.sp
+                            )
+                        }
+                        else -> {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(220.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                ScavengerLoader()
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = onDismiss,
+                colors = ButtonDefaults.buttonColors(containerColor = Maroon)
+            ) {
+                Text("Close", color = White)
             }
         }
     )
