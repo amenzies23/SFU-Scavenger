@@ -1,7 +1,9 @@
 package com.aark.sfuscavenger.ui.chat
 
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -11,7 +13,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
@@ -26,11 +28,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
@@ -39,6 +43,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import com.aark.sfuscavenger.ui.theme.Beige
+import com.aark.sfuscavenger.ui.theme.Black
+import com.aark.sfuscavenger.ui.theme.LightBeige
 import com.aark.sfuscavenger.ui.theme.ScavengerLoader
 import com.aark.sfuscavenger.ui.theme.Maroon
 import kotlin.math.roundToInt
@@ -75,13 +81,32 @@ fun ChatScreen(
     }
 
     // TODO: Fix chat UI issue when keyboard opens, it pushes the whole bottom navbar up
-    Column(
+    val chatEnabled = uiState.teamId != null
+    val showJoinTeamOverlay = !chatEnabled && !uiState.loading
+
+    Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFFF3ECE7))
+            .background(LightBeige)
             .imePadding()
             .padding(16.dp)
     ) {
+        Column(
+            modifier = Modifier.fillMaxSize()
+        ) {
+        Text(
+            text = "Team Chat",
+            style = MaterialTheme.typography.headlineSmall.copy(
+                color = Black,
+                fontWeight = FontWeight.SemiBold
+            )
+        )
+        Text(
+            text = "Coordinate with your teammates and keep everyone in sync.",
+            style = MaterialTheme.typography.bodySmall.copy(color = Maroon.copy(alpha = 0.7f)),
+            modifier = Modifier.padding(bottom = 12.dp)
+        )
+
         uiState.error?.let { err ->
             Text(
                 text = err,
@@ -95,40 +120,79 @@ fun ChatScreen(
             modifier = Modifier
                 .weight(1f)
                 .fillMaxWidth()
-                .clip(RoundedCornerShape(16.dp))
+                .shadow(10.dp, RoundedCornerShape(24.dp))
+                .border(BorderStroke(2.dp, Beige), RoundedCornerShape(24.dp))
+                .clip(RoundedCornerShape(24.dp))
                 .background(Color.White)
-                .padding(8.dp)
         ) {
-            if (uiState.loading) {
+            Box(
+                modifier = Modifier
+                    .matchParentSize()
+                    .alpha(if (chatEnabled) 1f else 0.35f)
+            ) {
+                Box(modifier = Modifier.padding(12.dp)) {
+                if (uiState.loading) {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        ScavengerLoader()
+                    }
+                } else {
+                    LazyColumn(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .pointerInput(Unit) {
+                                detectHorizontalDragGestures(
+                                    onHorizontalDrag = { _, dragAmount ->
+                                        // dragAmount < 0 when swiping left
+                                        val newValue = (dragOffsetPx + -dragAmount)
+                                            .coerceIn(0f, maxRevealPx)
+                                        dragOffsetPx = newValue
+                                    },
+                                    onDragEnd = { dragOffsetPx = 0f },
+                                    onDragCancel = { dragOffsetPx = 0f }
+                                )
+                            },
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                        state = listState
+                    ) {
+                        items(uiState.messages) { msg ->
+                            ChatMessageBubble(
+                                msg = msg,
+                                timeRevealProgress = timeRevealProgress
+                            )
+                        }
+                    }
+                }
+            }
+            }
+
+            if (showJoinTeamOverlay) {
                 Box(
-                    modifier = Modifier.fillMaxSize(),
+                    modifier = Modifier
+                        .matchParentSize()
+                        .background(Maroon.copy(alpha = 0.9f)),
                     contentAlignment = Alignment.Center
                 ) {
-                    ScavengerLoader()
-                }
-            } else {
-                LazyColumn(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .pointerInput(Unit) {
-                            detectHorizontalDragGestures(
-                                onHorizontalDrag = { _, dragAmount ->
-                                    // dragAmount < 0 when swiping left
-                                    val newValue = (dragOffsetPx + -dragAmount)
-                                        .coerceIn(0f, maxRevealPx)
-                                    dragOffsetPx = newValue
-                                },
-                                onDragEnd = { dragOffsetPx = 0f },
-                                onDragCancel = { dragOffsetPx = 0f }
-                            )
-                        },
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                    state = listState
-                ) {
-                    items(uiState.messages) { msg ->
-                        ChatMessageBubble(
-                            msg = msg,
-                            timeRevealProgress = timeRevealProgress
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Text(
+                            text = "Join a team to have a chat!",
+                            color = Color.White,
+                            fontWeight = FontWeight.Bold,
+                            textAlign = TextAlign.Center,
+                            fontSize = 18.sp,
+                            modifier = Modifier.padding(horizontal = 24.dp)
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = "Chat unlocks once you’re part of a team.",
+                            color = Color.White.copy(alpha = 0.85f),
+                            textAlign = TextAlign.Center,
+                            fontSize = 13.sp,
+                            modifier = Modifier.padding(horizontal = 32.dp)
                         )
                     }
                 }
@@ -140,37 +204,59 @@ fun ChatScreen(
         // Input row
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier
+                .fillMaxWidth()
+                .alpha(if (chatEnabled) 1f else 0.35f)
         ) {
-            TextField(
-                value = uiState.inputText,
-                onValueChange = vm::onInputChanged,
+            Box(
                 modifier = Modifier
                     .weight(1f)
-                    .clip(RoundedCornerShape(24.dp)),
-                placeholder = {
-                    Text(
-                        "Type a message…",
-                        color = Color(0xFF7B1F1F).copy(alpha = 0.4f)
+                    .border(
+                        BorderStroke(2.dp, Beige),
+                        RoundedCornerShape(24.dp)
                     )
-                },
-                maxLines = 3,
-                colors = TextFieldDefaults.colors(
-                    focusedContainerColor = Beige,
-                    unfocusedContainerColor = Beige,
-                    disabledContainerColor = Beige,
-                    cursorColor = Maroon,
-                    focusedIndicatorColor = Color.Transparent,
-                    unfocusedIndicatorColor = Color.Transparent,
-                    disabledIndicatorColor = Color.Transparent
+                    .clip(RoundedCornerShape(24.dp))
+                    .background(Color.White.copy(alpha = 0.9f))
+            ) {
+                TextField(
+                    value = uiState.inputText,
+                    onValueChange = vm::onInputChanged,
+                    enabled = chatEnabled,
+                    modifier = Modifier.fillMaxWidth(),
+                    placeholder = {
+                        Text(
+                            "Type a message…",
+                            color = Maroon.copy(alpha = 0.45f)
+                        )
+                    },
+                    textStyle = LocalTextStyle.current.copy(
+                        color = Maroon,
+                        fontSize = 14.sp
+                    ),
+                    maxLines = 3,
+                    colors = TextFieldDefaults.colors(
+                        focusedTextColor = Maroon,
+                        unfocusedTextColor = Maroon,
+                        disabledTextColor = Maroon.copy(alpha = 0.4f),
+                        focusedPlaceholderColor = Maroon.copy(alpha = 0.5f),
+                        unfocusedPlaceholderColor = Maroon.copy(alpha = 0.4f),
+                        disabledPlaceholderColor = Maroon.copy(alpha = 0.3f),
+                        focusedContainerColor = Color.Transparent,
+                        unfocusedContainerColor = Color.Transparent,
+                        disabledContainerColor = Color.Transparent,
+                        cursorColor = Maroon,
+                        focusedIndicatorColor = Color.Transparent,
+                        unfocusedIndicatorColor = Color.Transparent,
+                        disabledIndicatorColor = Color.Transparent
+                    )
                 )
-            )
+            }
 
             Spacer(modifier = Modifier.width(8.dp))
 
             Button(
                 onClick = { vm.sendCurrentMessage() },
-                enabled = uiState.inputText.isNotBlank(),
+                enabled = chatEnabled && uiState.inputText.isNotBlank(),
                 shape = CircleShape,
                 colors = ButtonDefaults.buttonColors(
                     containerColor = Maroon,
@@ -189,6 +275,8 @@ fun ChatScreen(
                 )
             }
         }
+        }
+
     }
 }
 
@@ -199,6 +287,26 @@ private fun ChatMessageBubble(
 ) {
     val bubbleColor = if (msg.isMine) Maroon else Beige
     val textColor = if (msg.isMine) Color.White else Color.Black
+    val bubbleShape = if (msg.isMine) {
+        RoundedCornerShape(
+            topStart = 16.dp,
+            topEnd = 16.dp,
+            bottomStart = 16.dp,
+            bottomEnd = 4.dp
+        )
+    } else {
+        RoundedCornerShape(
+            topStart = 16.dp,
+            topEnd = 16.dp,
+            bottomStart = 4.dp,
+            bottomEnd = 16.dp
+        )
+    }
+    val bubbleBorderColor = if (msg.isMine) {
+        Color.White.copy(alpha = 0.6f)
+    } else {
+        Maroon.copy(alpha = 0.3f)
+    }
 
     val density = LocalDensity.current
     val timeColumnBase = 60.dp
@@ -232,25 +340,9 @@ private fun ChatMessageBubble(
                 modifier = Modifier
                     .offset { IntOffset(-bubbleShiftPx.roundToInt(), 0) }
                     .widthIn(max = 260.dp)
-                    .clip(
-                        if (msg.isMine) {
-                            // Our message: tail points down to the right
-                            RoundedCornerShape(
-                                topStart = 16.dp,
-                                topEnd = 16.dp,
-                                bottomStart = 16.dp,
-                                bottomEnd = 4.dp
-                            )
-                        } else {
-                            // Incoming: tail points down toward avatar
-                            RoundedCornerShape(
-                                topStart = 16.dp,
-                                topEnd = 16.dp,
-                                bottomStart = 4.dp,
-                                bottomEnd = 16.dp
-                            )
-                        }
-                    )
+                    .shadow(2.dp, bubbleShape)
+                    .clip(bubbleShape)
+                    .border(BorderStroke(1.dp, bubbleBorderColor), bubbleShape)
                     .background(bubbleColor)
                     .padding(horizontal = 10.dp, vertical = 6.dp)
             ) {
@@ -259,7 +351,7 @@ private fun ChatMessageBubble(
                         text = "${msg.senderName} (Lv.${msg.senderLevel})",
                         fontSize = 11.sp,
                         fontWeight = FontWeight.SemiBold,
-                        color = textColor.copy(alpha = 0.9f)
+                        color = Maroon.copy(alpha = 0.9f)
                     )
                     Spacer(modifier = Modifier.height(2.dp))
                 }
