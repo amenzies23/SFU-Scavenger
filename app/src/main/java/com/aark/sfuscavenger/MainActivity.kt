@@ -108,6 +108,7 @@ fun SFUScavengerApp() {
                     showSettings = (currentRoute == "profile"),
                     onSettingsClick = { showProfileSettings = true },
 
+                    // re-join button
                     showRejoinGame = activeGame != null,
                     onRejoinGame = activeGame?.let { game ->
                         {

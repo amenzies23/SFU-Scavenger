@@ -49,6 +49,7 @@ fun HomeScreen(
     val mapGames = vm.mapGames
     var selectedGameForJoin by remember { mutableStateOf<Game?>(null) }
     
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -71,6 +72,95 @@ fun HomeScreen(
                 .fillMaxWidth()
                 .weight(1f)
                 .border(2.dp, Color(0xFFE1D5CD), shape = RoundedCornerShape(10.dp)),
+            onGameMarkerClick = { game ->
+                selectedGameForJoin = game
+            }
+        )
+    }
+
+    selectedGameForJoin?.let { game ->
+        HomeGameJoinDialog(
+            game = game,
+            onDismiss = { selectedGameForJoin = null },
+            onJoin = {
+                selectedGameForJoin = null
+                navController.navigate("lobby/${game.id}")
+            }
+        )
+    }
+}
+
+@Composable
+private fun HomeGamesMap(
+    games: List<Game>,
+    modifier: Modifier = Modifier,
+    onGameMarkerClick: (Game) -> Unit
+) {
+    Box(
+        modifier = modifier
+            .clip(RoundedCornerShape(16.dp))
+    ) {
+        SharedMap {
+            games.forEach { game ->
+                val loc = game.location ?: return@forEach
+
+                val hue = when {
+                    game.status == "live" -> BitmapDescriptorFactory.HUE_BLUE
+                    game.status == "draft" && game.startTime != null ->
+                        BitmapDescriptorFactory.HUE_ORANGE
+                    else -> return@forEach
+                }
+
+                val position = LatLng(loc.latitude, loc.longitude)
+
+                Marker(
+                    state = rememberMarkerState(position = position),
+                    title = game.name,
+                    snippet = when {
+                        game.status == "live" -> "Live game"
+                        else -> "Scheduled game"
+                    },
+                    icon = BitmapDescriptorFactory.defaultMarker(hue),
+                    onClick = {
+                        onGameMarkerClick(game)
+                        true
+                    }
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun HomeGameJoinDialog(
+    game: Game,
+    onDismiss: () -> Unit,
+    onJoin: () -> Unit
+) {
+    val isLiveJoinable =
+        game.status == "live" && game.joinMode == "open"
+
+    val isScheduled =
+        game.status == "draft" && game.startTime != null
+
+    val formatter = remember {
+        SimpleDateFormat("MMM d, yyyy • h:mm a", Locale.getDefault())
+    }
+
+
+        Text(
+            text = "Games map",
+            fontSize = 16.sp,
+            fontWeight = FontWeight.SemiBold,
+            color = Color.Black,
+            modifier = Modifier.padding(bottom = 8.dp)
+        )
+
+        HomeGamesMap(
+            games = mapGames,
+            modifier = Modifier
+                .fillMaxWidth()
+                .weight(1f),
             onGameMarkerClick = { game ->
                 selectedGameForJoin = game
             }
@@ -194,6 +284,58 @@ private fun HomeGameJoinDialog(
                         color = Black,
                         fontSize = 14.sp
                     )
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                Text(
+                    text = when {
+                        isLiveJoinable ->
+                            "This game is live and open. Join to enter the lobby."
+                        else ->
+                            "This game is not currently joinable."
+                    },
+                    fontSize = 14.sp,
+                    color = Black
+                )
+            }
+        },
+        confirmButton = {
+            if (isLiveJoinable) {
+                Button(
+                    onClick = onJoin,
+                    shape = RoundedCornerShape(16.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Maroon,
+                        contentColor = White
+                    )
+                ) {
+                    Text("Join game")
+                }
+            } else {
+                Button(
+                    onClick = onDismiss,
+                    shape = RoundedCornerShape(16.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Maroon,
+                        contentColor = White
+                    )
+                ) {
+                    Text("OK")
+                }
+            }
+        },
+        dismissButton = {
+            if (isLiveJoinable) {
+                Button(
+                    onClick = onDismiss,
+                    shape = RoundedCornerShape(16.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = LightBeige,
+                        contentColor = Black
+                    )
+                ) {
+                    Text("Cancel")
                 }
 
                 Spacer(modifier = Modifier.height(12.dp))
