@@ -6,6 +6,9 @@ import com.aark.sfuscavenger.data.models.Team
 import com.aark.sfuscavenger.repositories.TeamRepository
 import com.google.firebase.Timestamp
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -16,6 +19,7 @@ data class LeaderboardRowUi(
     val rank: Int,
     val teamName: String,
     val score: Int,
+    val members: List<String> = emptyList(),
     val isMyTeam: Boolean
 )
 
@@ -34,6 +38,12 @@ class LeaderboardViewModel(
 
     private var listenJob: Job? = null
     private var currentGameId: String? = null
+    private val teamMembersCache = mutableMapOf<String, CachedMembers>()
+
+    private data class CachedMembers(
+        val memberCount: Int,
+        val names: List<String>
+    )
 
     /**
      * Start listening for leaderboard updates for this game.
@@ -56,15 +66,8 @@ class LeaderboardViewModel(
 
             teamRepo.listenToTeamsFlow(gameId).collect { teams ->
                 val sorted = sortTeamsForLeaderboard(teams)
-
-                val rows = sorted.mapIndexed { index, team ->
-                    LeaderboardRowUi(
-                        rank = index + 1,
-                        teamName = team.name.ifBlank { "Unnamed team" },
-                        score = team.score,
-                        isMyTeam = (team.id == myTeamId)
-                    )
-                }
+                teamMembersCache.keys.retainAll(sorted.map { it.id }.toSet())
+                val rows = buildLeaderboardRows(gameId, sorted, myTeamId)
 
                 _uiState.update {
                     it.copy(
@@ -89,5 +92,52 @@ class LeaderboardViewModel(
 
     private fun safeTimestampForTieBreak(ts: Timestamp?): Long {
         return ts?.toDate()?.time ?: Long.MAX_VALUE
+    }
+
+    private suspend fun buildLeaderboardRows(
+        gameId: String,
+        sortedTeams: List<Team>,
+        myTeamId: String?
+    ): List<LeaderboardRowUi> {
+        if (sortedTeams.isEmpty()) return emptyList()
+
+        val memberNames = coroutineScope {
+            sortedTeams.map { team ->
+                async { getMemberNamesForTeam(gameId, team) }
+            }.awaitAll()
+        }
+
+        return sortedTeams.mapIndexed { index, team ->
+            LeaderboardRowUi(
+                rank = index + 1,
+                teamName = team.name.ifBlank { "Unnamed team" },
+                score = team.score,
+                members = memberNames[index],
+                isMyTeam = (team.id == myTeamId)
+            )
+        }
+    }
+
+    private suspend fun getMemberNamesForTeam(
+        gameId: String,
+        team: Team
+    ): List<String> {
+        if (team.id.isBlank()) return emptyList()
+
+        val cached = teamMembersCache[team.id]
+        if (cached != null && cached.memberCount == team.memberCount) {
+            return cached.names
+        }
+
+        val names = runCatching {
+            teamRepo.getTeamMembersWithUserObject(gameId, team.id).values.map { user ->
+                user.displayName?.takeIf { it.isNotBlank() }
+                    ?: user.username?.takeIf { it.isNotBlank() }
+                    ?: "Player"
+            }.sorted()
+        }.getOrElse { emptyList() }
+
+        teamMembersCache[team.id] = CachedMembers(team.memberCount, names)
+        return names
     }
 }

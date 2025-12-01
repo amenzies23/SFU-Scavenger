@@ -27,6 +27,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import com.aark.sfuscavenger.ui.theme.Black
+import com.aark.sfuscavenger.ui.theme.ScavengerBackgroundBrush
 import com.aark.sfuscavenger.ui.theme.ScavengerLoader
 import com.aark.sfuscavenger.ui.theme.ScavengerDialog
 import com.aark.sfuscavenger.ui.theme.Maroon
@@ -79,50 +80,90 @@ fun TaskScreen(
 
     Surface(
         modifier = Modifier.fillMaxSize(),
-        color = Color(0xFFF3ECE7)
+        color = Color.Transparent
     ) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(16.dp)
+                .background(ScavengerBackgroundBrush)
+                .padding(horizontal = 16.dp, vertical = 24.dp)
         ) {
-            // Show loading spinner while tasks are being loaded
-            if (state.loading) {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    ScavengerLoader()
-                }
-            } else if (state.error != null) {
-                Text(
-                    text = state.error ?: "Unknown error",
-                    color = Color.Red,
-                    modifier = Modifier.padding(16.dp)
-                )
-            } else {
-                if (state.isHost) {
-                    HostTaskView(
-                        state = state,
-                        onApprove = { vm.approveSubmission(it) },
-                        onReject = { vm.rejectSubmission(it) },
-                        onEndGame = { showEndGameDialog = true }
-                    )
-
+            val gameTitle = state.gameName?.takeIf { it.isNotBlank() }
+            Text(
+                text = gameTitle?.let { "$it's tasks" } ?: "Tasks",
+                fontSize = 28.sp,
+                fontWeight = FontWeight.Bold,
+                color = Black
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = if (state.isHost) {
+                    "Review submissions and keep the game flowing."
                 } else {
-                    PlayerTaskView(
-                        state = state,
-                        onTaskClick = { task ->
-                            when (task.type) {
-                                "photo" -> selectedPhotoTask = task
-                                "text" -> selectedTextTask = task
-                                "qr" -> selectedQRTask = task
-                                else -> {
-                                    selectedTextTask = task
-                                }
-                            }
+                    "Complete challenges to boost your team's score."
+                },
+                fontSize = 14.sp,
+                color = Black.copy(alpha = 0.7f)
+            )
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f)
+            ) {
+                when {
+                    state.loading -> {
+                        Column(
+                            modifier = Modifier.fillMaxSize(),
+                            verticalArrangement = Arrangement.Center,
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            ScavengerLoader()
                         }
-                    )
+                    }
+
+                    state.error != null -> {
+                        Column(
+                            modifier = Modifier.fillMaxSize(),
+                            verticalArrangement = Arrangement.Center,
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Text(
+                                text = state.error ?: "Unknown error",
+                                color = Color.Red,
+                                fontWeight = FontWeight.SemiBold,
+                                fontSize = 16.sp
+                            )
+                        }
+                    }
+
+                    state.isHost -> {
+                        HostTaskView(
+                            state = state,
+                            onApprove = { vm.approveSubmission(it) },
+                            onReject = { vm.rejectSubmission(it) },
+                            onEndGame = { showEndGameDialog = true },
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    }
+
+                    else -> {
+                        PlayerTaskView(
+                            state = state,
+                            onTaskClick = { task ->
+                                when (task.type) {
+                                    "photo" -> selectedPhotoTask = task
+                                    "text" -> selectedTextTask = task
+                                    "qr" -> selectedQRTask = task
+                                    else -> {
+                                        selectedTextTask = task
+                                    }
+                                }
+                            },
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    }
                 }
             }
         }
@@ -202,17 +243,10 @@ fun TaskScreen(
 @Composable
 private fun PlayerTaskView(
     state: TaskUiState,
-    onTaskClick: (TaskUi) -> Unit
+    onTaskClick: (TaskUi) -> Unit,
+    modifier: Modifier = Modifier
 ) {
-    Column {
-        Text(
-            text = "Tasks",
-            fontSize = 24.sp,
-            fontWeight = FontWeight.Bold,
-            color = Black,
-            modifier = Modifier.padding(bottom = 8.dp)
-        )
-
+    Column(modifier = modifier) {
         Text(
             text = "Team Score: ${state.teamScore} pts",
             fontSize = 18.sp,
@@ -611,9 +645,10 @@ private fun HostTaskView(
     state: TaskUiState,
     onApprove: (SubmissionUi) -> Unit,
     onReject: (SubmissionUi) -> Unit,
-    onEndGame: () -> Unit
+    onEndGame: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
-    Column {
+    Column(modifier = modifier) {
         Text(
             text = "Submissions to Review",
             fontSize = 24.sp,

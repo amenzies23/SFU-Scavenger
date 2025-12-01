@@ -64,6 +64,7 @@ data class TaskUiState(
     val error: String? = null,
     val isHost: Boolean = false,
     val gameId: String? = null,
+    val gameName: String? = null,
     val teamId: String? = null,
 
     // Player view
@@ -102,7 +103,8 @@ class TaskViewModel(
                 val uid = auth.currentUser?.uid
                 val isHost = uid != null && uid == game?.ownerId
 
-                _state.update { it.copy(isHost = isHost) }
+                val displayName = game?.name?.ifBlank { "Untitled Game" }
+                _state.update { it.copy(isHost = isHost, gameName = displayName) }
 
                 if (isHost) {
                     // Hosts watch all submissions from all teams
