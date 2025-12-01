@@ -20,12 +20,22 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.aark.sfuscavenger.data.models.User
+import com.aark.sfuscavenger.data.models.Task
+import com.aark.sfuscavenger.data.models.Submission
 import com.aark.sfuscavenger.repositories.GameRepository
 import com.aark.sfuscavenger.repositories.TeamRepository
 import com.aark.sfuscavenger.repositories.UserRepository
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.storage.FirebaseStorage
+import kotlinx.coroutines.tasks.await
 import com.aark.sfuscavenger.ui.theme.Maroon
 import com.aark.sfuscavenger.ui.theme.ScavengerText
+import coil.compose.AsyncImage
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.text.style.TextOverflow
+import java.text.SimpleDateFormat
+import java.util.Locale
 
 @Composable
 fun ResultsScreen(
@@ -38,11 +48,15 @@ fun ResultsScreen(
     val teamRepository = remember { TeamRepository() }
     val userRepository = remember { UserRepository() }
     val auth = remember { FirebaseAuth.getInstance() }
+    val firestore = remember { FirebaseFirestore.getInstance() }
 
     var gameName by remember { mutableStateOf<String?>(null) }
     var placement by remember { mutableStateOf<String?>(null) }
     var score by remember { mutableStateOf<Int?>(null) }
     var teamMembers by remember { mutableStateOf<List<User>>(emptyList()) }
+    var completedTasks by remember { mutableStateOf<List<CompletedTaskResult>>(emptyList()) }
+    var completedTasksLoading by remember { mutableStateOf(false) }
+    var completedTasksError by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(gameId, teamId) {
         val game = gameRepository.getGame(gameId)
@@ -66,6 +80,17 @@ fun ResultsScreen(
             
             val membersMap = teamRepository.getTeamMembersWithUserObject(gameId, teamId)
             teamMembers = membersMap.values.toList()
+
+            completedTasksLoading = true
+            completedTasksError = null
+            completedTasks = try {
+                fetchCompletedTasks(gameId, teamId, firestore)
+            } catch (e: Exception) {
+                completedTasksError = e.message ?: "Failed to load completed tasks."
+                emptyList()
+            } finally {
+                completedTasksLoading = false
+            }
         } else {
             placement = "N/A"
             score = null
@@ -74,6 +99,7 @@ fun ResultsScreen(
                 val currentUser = userRepository.fetchUserById(currentUserId)
                 teamMembers = if (currentUser != null) listOf(currentUser) else emptyList()
             }
+            completedTasks = emptyList()
         }
     }
 
@@ -150,20 +176,39 @@ fun ResultsScreen(
                     item { SectionTitle("Task progress") }
                     item {
                         InfoCard {
-                            Text(
-                                text = "No tasks completed yet.",
-                                style = MaterialTheme.typography.bodyMedium
-                            )
-                        }
-                    }
-
-                    item { SectionTitle("Notes") }
-                    item {
-                        InfoCard {
-                            Text(
-                                text = "No additional notes.",
-                                style = MaterialTheme.typography.bodyMedium
-                            )
+                            when {
+                                completedTasksLoading -> {
+                                    Column(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalAlignment = Alignment.CenterHorizontally,
+                                        verticalArrangement = Arrangement.Center
+                                    ) {
+                                        CircularProgressIndicator(color = Maroon)
+                                        Spacer(modifier = Modifier.height(8.dp))
+                                        Text("Loading completed tasks…", color = Color.Gray)
+                                    }
+                                }
+                                completedTasksError != null -> {
+                                    Text(
+                                        text = completedTasksError ?: "Failed to load tasks.",
+                                        color = Color.Red,
+                                        style = MaterialTheme.typography.bodyMedium
+                                    )
+                                }
+                                completedTasks.isEmpty() -> {
+                                    Text(
+                                        text = "No tasks completed yet.",
+                                        style = MaterialTheme.typography.bodyMedium
+                                    )
+                                }
+                                else -> {
+                                    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                                        completedTasks.forEach { task ->
+                                            CompletedTaskResultCard(task)
+                                        }
+                                    }
+                                }
+                            }
                         }
                     }
 
@@ -203,6 +248,172 @@ fun ResultsScreen(
                 ) {
                     Text("Back to Home")
                 }
+            }
+        }
+    }
+}
+
+data class CompletedTaskResult(
+    val taskName: String,
+    val description: String,
+    val points: Int,
+    val type: String,
+    val submittedText: String?,
+    val photoPath: String?,
+    val submittedAt: com.google.firebase.Timestamp?
+)
+
+private suspend fun fetchCompletedTasks(
+    gameId: String,
+    teamId: String,
+    firestore: FirebaseFirestore
+): List<CompletedTaskResult> {
+    val tasksSnap = firestore.collection("games")
+        .document(gameId)
+        .collection("tasks")
+        .get()
+        .await()
+
+    val tasks = tasksSnap.documents.mapNotNull { doc ->
+        doc.toObject(Task::class.java)?.copy(id = doc.id)
+    }.associateBy { it.id }
+
+    val submissionsSnap = firestore.collection("games")
+        .document(gameId)
+        .collection("teams")
+        .document(teamId)
+        .collection("submissions")
+        .get()
+        .await()
+
+    return submissionsSnap.documents.mapNotNull { doc ->
+        val submission = doc.toObject(Submission::class.java) ?: return@mapNotNull null
+        val approved = submission.status == "approved" || submission.status == "auto_approved"
+        if (!approved) return@mapNotNull null
+        val task = tasks[submission.taskId] ?: return@mapNotNull null
+
+        CompletedTaskResult(
+            taskName = task.name,
+            description = task.description,
+            points = task.points,
+            type = submission.type,
+            submittedText = submission.text,
+            photoPath = submission.mediaStoragePath,
+            submittedAt = submission.createdAt
+        )
+    }.sortedBy { it.taskName.lowercase(Locale.getDefault()) }
+}
+
+@Composable
+private fun CompletedTaskResultCard(result: CompletedTaskResult) {
+    val formatter = remember {
+        SimpleDateFormat("MMM d, yyyy h:mm a", Locale.getDefault())
+    }
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text(
+            text = "Task: ${result.taskName}",
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold,
+            color = Color.Black
+        )
+        Text(
+            text = "Points: ${result.points}",
+            color = Maroon,
+            fontWeight = FontWeight.Medium
+        )
+        if (result.description.isNotBlank()) {
+            Text(
+                text = result.description,
+                style = MaterialTheme.typography.bodyMedium,
+                color = Color.DarkGray,
+                maxLines = 4,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+        result.submittedAt?.toDate()?.let { date ->
+            Text(
+                text = "Submitted at: ${formatter.format(date)}",
+                color = Color.Gray,
+                style = MaterialTheme.typography.bodySmall
+            )
+        }
+        Text(
+            text = "Answer (${result.type.uppercase()}):",
+            fontWeight = FontWeight.SemiBold,
+            color = Color.Black
+        )
+        when {
+            result.type == "photo" && !result.photoPath.isNullOrBlank() -> {
+                SubmittedPhoto(path = result.photoPath)
+            }
+            !result.submittedText.isNullOrBlank() -> {
+                Text(
+                    text = result.submittedText,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = Color.Black
+                )
+            }
+            else -> {
+                Text(
+                    text = "No answer text available.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = Color.Gray
+                )
+            }
+        }
+        Divider(color = Color(0xFFE1D5CD))
+    }
+}
+
+@Composable
+private fun SubmittedPhoto(path: String) {
+    var photoUrl by remember(path) { mutableStateOf<String?>(null) }
+    var error by remember(path) { mutableStateOf<String?>(null) }
+
+    LaunchedEffect(path) {
+        error = null
+        photoUrl = null
+        try {
+            val url = FirebaseStorage.getInstance()
+                .reference
+                .child(path)
+                .downloadUrl
+                .await()
+                .toString()
+            photoUrl = url
+        } catch (e: Exception) {
+            error = "Unable to load photo."
+        }
+    }
+
+    when {
+        photoUrl != null -> {
+            AsyncImage(
+                model = photoUrl,
+                contentDescription = "Submitted photo",
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(220.dp)
+                    .clip(RoundedCornerShape(12.dp)),
+                contentScale = ContentScale.Crop
+            )
+        }
+        error != null -> {
+            Text(
+                text = error ?: "",
+                color = Color.Red,
+                style = MaterialTheme.typography.bodySmall
+            )
+        }
+        else -> {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(120.dp),
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                CircularProgressIndicator(color = Maroon)
             }
         }
     }
