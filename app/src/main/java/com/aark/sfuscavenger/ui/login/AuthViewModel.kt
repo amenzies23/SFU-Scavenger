@@ -53,6 +53,7 @@ class AuthViewModel (private val repo: AuthRepository = AuthRepository()) : View
         val msg = e.message.orEmpty()
         return when {
             "weak-password" in msg -> "Password is too weak (min 6)."
+            "auth credential is incorrect" in msg -> "Invalid password"
             "email-already-in-use" in msg -> "Email already in use."
             "invalid-credential" in msg || "invalid-email" in msg -> "Invalid email or password."
             else -> msg.ifBlank { "Authentication error." }
