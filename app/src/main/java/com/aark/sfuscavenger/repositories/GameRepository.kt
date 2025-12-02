@@ -159,27 +159,42 @@ class GameRepository(
     suspend fun getLiveGamesForCurrentUser(): List<Game> {
         val uid = auth.currentUser?.uid ?: return emptyList()
 
+        // Games where the user is a member (current behavior)
         val membershipsSnap = db.collection("users")
             .document(uid)
             .collection("memberships")
             .get()
             .await()
 
-        if (membershipsSnap.isEmpty) return emptyList()
+        val memberGames: List<Game> = if (!membershipsSnap.isEmpty) {
+            val gameIds = membershipsSnap.documents.map { it.id }
 
-        val gameIds = membershipsSnap.documents.map { it.id }
+            val snapshot = gamesCollection
+                .whereIn(FieldPath.documentId(), gameIds)
+                .whereEqualTo("status", "started")
+                .get()
+                .await()
 
-        val snapshot = gamesCollection
-            .whereIn(FieldPath.documentId(), gameIds)
+            snapshot.documents.mapNotNull { doc ->
+                doc.toObject(Game::class.java)?.copy(id = doc.id)
+            }
+        } else {
+            emptyList()
+        }
+
+        // Games where the user is the host/owner
+        val hostSnapshot = gamesCollection
+            .whereEqualTo("ownerId", uid)
             .whereEqualTo("status", "started")
             .get()
             .await()
 
-        if (snapshot.isEmpty) return emptyList()
-
-        return snapshot.documents.mapNotNull { doc ->
+        val hostGames = hostSnapshot.documents.mapNotNull { doc ->
             doc.toObject(Game::class.java)?.copy(id = doc.id)
         }
+
+        // Merge both lists and remove duplicates by game id
+        return (memberGames + hostGames).distinctBy { it.id }
     }
 
     suspend fun deleteGame(gameId: String) {
