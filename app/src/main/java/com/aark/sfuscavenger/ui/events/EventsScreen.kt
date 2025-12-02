@@ -110,35 +110,36 @@ private fun EventsContent(
     Column(
         modifier = modifier.fillMaxSize()
     ) {
-        PrimaryTabRow(
-            selectedTabIndex = selectedTabIndex,
-            containerColor = Color.Transparent,
-            contentColor = Maroon,
-            indicator = {
-                Box(
-                    modifier = Modifier
-                        .tabIndicatorOffset(selectedTabIndex, matchContentSize = false)
-                        .height(3.dp)
-                        .fillMaxWidth()
-                        .background(
-                            color = Maroon,
-                            shape = RoundedCornerShape(topStart = 3.dp, topEnd = 3.dp)
-                        )
+        Surface(color = Color.White, modifier = Modifier.fillMaxWidth()) {
+            PrimaryTabRow(
+                selectedTabIndex = selectedTabIndex,
+                containerColor = Color.White,
+                contentColor = Maroon,
+                indicator = {
+                    Box(
+                        modifier = Modifier
+                            .tabIndicatorOffset(selectedTabIndex, matchContentSize = false)
+                            .height(3.dp)
+                            .fillMaxWidth()
+                            .background(
+                                color = Maroon,
+                                shape = RoundedCornerShape(topStart = 3.dp, topEnd = 3.dp)
+                            )
+                    )
+                },
+                divider = {}
+            ) {
+                Tab(
+                    selected = selectedTabIndex == 0,
+                    onClick = { onTabSelected(0) },
+                    text = { Text("Join", color = Black) }
+                )
+                Tab(
+                    selected = selectedTabIndex == 1,
+                    onClick = { onTabSelected(1) },
+                    text = { Text("Create", color = Black) }
                 )
             }
-,
-            divider = {}
-        ) {
-            Tab(
-                selected = selectedTabIndex == 0,
-                onClick = { onTabSelected(0) },
-                text = { Text("Join", color = Black) }
-            )
-            Tab(
-                selected = selectedTabIndex == 1,
-                onClick = { onTabSelected(1) },
-                text = { Text("Create", color = Black) }
-            )
         }
 
         when (selectedTabIndex) {
@@ -323,7 +324,7 @@ private fun MyGamesRow(
                     stiffness = Spring.StiffnessLow
                 )
             ),
-        color = Color.White.copy(alpha = 0.95f)
+        color = Color.White
     ) {
         Column(
             modifier = Modifier.padding(16.dp)
@@ -419,7 +420,7 @@ private fun GameRow(
                     stiffness = Spring.StiffnessLow
                 )
             ),
-        color = Color.White.copy(alpha = 0.95f)
+        color = Color.White
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Row(
@@ -471,7 +472,12 @@ fun JoinByCodeRow(
             .padding(vertical = 8.dp)
             .fillMaxWidth()
             .clip(RoundedCornerShape(16.dp))
-            .background(LightBeige)
+            .background(Color.White)
+            .border(
+                width = 1.dp,
+                color = Color(0xFFE1D5CD),
+                shape = RoundedCornerShape(16.dp)
+            )
             .padding(horizontal = 12.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {

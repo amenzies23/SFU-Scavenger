@@ -619,11 +619,9 @@ private fun QRSubmissionDialog(
         }
     }
 
-    AlertDialog(
+    ScavengerDialog(
         onDismissRequest = { if (!scanning) onDismiss() },
-        containerColor = Color(0xFFF3ECE7),
-        shape = RoundedCornerShape(16.dp),
-        title = { Text(task.name, fontWeight = FontWeight.Bold, color = Black) },
+        title = task.name,
         text = {
             Column {
                 if (task.description.isNotBlank()) {
