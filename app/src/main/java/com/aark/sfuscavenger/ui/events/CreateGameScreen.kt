@@ -334,8 +334,9 @@ private fun GameTab(navController: NavController,
                 item {
                     Text(
                         text = error.value ?: "",
-                        color = DarkOrange,
-                        fontSize = 14.sp
+                        color = Maroon,
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.SemiBold
                     )
                 }
             }

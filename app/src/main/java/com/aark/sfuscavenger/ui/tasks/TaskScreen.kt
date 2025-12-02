@@ -27,6 +27,9 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import com.aark.sfuscavenger.ui.theme.Black
+import com.aark.sfuscavenger.ui.theme.ScavengerBackgroundBrush
+import com.aark.sfuscavenger.ui.theme.ScavengerLoader
+import com.aark.sfuscavenger.ui.theme.ScavengerDialog
 import com.aark.sfuscavenger.ui.theme.Maroon
 import com.aark.sfuscavenger.ui.theme.White
 import com.google.firebase.storage.FirebaseStorage
@@ -72,6 +75,7 @@ fun TaskScreen(
     var selectedTextTask by remember { mutableStateOf<TaskUi?>(null) }
     var selectedPhotoTask by remember { mutableStateOf<TaskUi?>(null) }
     var selectedQRTask by remember { mutableStateOf<TaskUi?>(null) }
+    var selectedCompletedTask by remember { mutableStateOf<TaskUi?>(null) }
     var showEndGameDialog by remember { mutableStateOf(false) }
 
     // When gameId changes or screen loads, start fetching tasks for that game
@@ -81,12 +85,13 @@ fun TaskScreen(
 
     Surface(
         modifier = Modifier.fillMaxSize(),
-        color = Color(0xFFF3ECE7)
+        color = Color.Transparent
     ) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(16.dp)
+                .background(ScavengerBackgroundBrush)
+                .padding(horizontal = 16.dp, vertical = 24.dp)
         ) {
             // Show loading spinner while tasks are being loaded
             if (state.loading) {
@@ -472,14 +477,9 @@ private fun PhotoSubmissionDialog(
         }
     }
 
-
-    AlertDialog(
+    ScavengerDialog(
         onDismissRequest = { if (!isSubmitting) onDismiss() },
-        containerColor = Color(0xFFF3ECE7),
-        shape = RoundedCornerShape(16.dp),
-        title = {
-            Text(task.name, fontWeight = FontWeight.Bold, color = Black)
-        },
+        title = task.name,
         text = {
             Column {
                 if (task.description.isNotBlank()) {
@@ -555,7 +555,6 @@ private fun PhotoSubmissionDialog(
                 Text(if (isSubmitting) "Submitting..." else "Submit", color = White)
             }
         },
-
         dismissButton = {
             TextButton(
                 onClick = { if (!isSubmitting) onDismiss() },
@@ -648,6 +647,129 @@ private fun QRSubmissionDialog(
     )
 }
 
+@Composable
+private fun CompletedTaskDetailsDialog(
+    task: TaskUi,
+    onDismiss: () -> Unit
+) {
+    val photoPath = task.lastSubmissionPhotoPath
+    var photoUrl by remember(photoPath) { mutableStateOf<String?>(null) }
+    var photoError by remember(photoPath) { mutableStateOf<String?>(null) }
+
+    LaunchedEffect(photoPath) {
+        photoUrl = null
+        photoError = null
+        if (!photoPath.isNullOrBlank()) {
+            try {
+                val ref = FirebaseStorage.getInstance().reference.child(photoPath)
+                photoUrl = ref.downloadUrl.await().toString()
+            } catch (e: Exception) {
+                photoError = "Unable to load the submitted photo."
+            }
+        }
+    }
+
+    ScavengerDialog(
+        onDismissRequest = onDismiss,
+        title = "${task.name} completed",
+        text = {
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Text(
+                    text = "Quest",
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = Maroon
+                )
+                Text(
+                    text = task.description.ifBlank { "No quest description was provided for this challenge." },
+                    fontSize = 14.sp,
+                    color = Black
+                )
+
+                Text(
+                    text = "Task type: ${task.type.uppercase()}",
+                    fontSize = 12.sp,
+                    color = Color.Gray
+                )
+
+                if (!task.lastSubmissionText.isNullOrBlank()) {
+                    Surface(
+                        modifier = Modifier.fillMaxWidth(),
+                        color = Color(0xFFF5F5F5),
+                        shape = RoundedCornerShape(8.dp)
+                    ) {
+                        Column(modifier = Modifier.padding(12.dp)) {
+                            Text(
+                                text = "Submitted Answer",
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Medium,
+                                color = Color.Gray
+                            )
+                            Text(
+                                text = task.lastSubmissionText,
+                                fontSize = 14.sp,
+                                color = Black,
+                                modifier = Modifier.padding(top = 4.dp)
+                            )
+                        }
+                    }
+                }
+
+                if (!photoPath.isNullOrBlank()) {
+                    Text(
+                        text = "Submitted Photo",
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = Color.Gray
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    when {
+                        photoUrl != null -> {
+                            AsyncImage(
+                                model = photoUrl,
+                                contentDescription = "Submitted photo preview",
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(220.dp)
+                                    .clip(RoundedCornerShape(10.dp)),
+                                contentScale = ContentScale.Crop
+                            )
+                        }
+                        photoError != null -> {
+                            Text(
+                                text = photoError ?: "",
+                                color = Color.Red,
+                                fontSize = 12.sp
+                            )
+                        }
+                        else -> {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(220.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                ScavengerLoader()
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = onDismiss,
+                colors = ButtonDefaults.buttonColors(containerColor = Maroon)
+            ) {
+                Text("Close", color = White)
+            }
+        }
+    )
+}
+
 
 /**
  * Host View
@@ -657,9 +779,10 @@ private fun HostTaskView(
     state: TaskUiState,
     onApprove: (SubmissionUi) -> Unit,
     onReject: (SubmissionUi) -> Unit,
-    onEndGame: () -> Unit
+    onEndGame: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
-    Column {
+    Column(modifier = modifier) {
         Text(
             text = "Submissions to Review",
             fontSize = 24.sp,
@@ -810,7 +933,9 @@ private fun SubmissionCard(
             if (!submission.textAnswer.isNullOrBlank()) {
                 Spacer(modifier = Modifier.height(12.dp))
                 Surface(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .navigationBarsPadding(),
                     color = Color(0xFFF5F5F5),
                     shape = RoundedCornerShape(8.dp)
                 ) {
@@ -861,16 +986,16 @@ private fun SubmissionCard(
                         contentScale = ContentScale.Crop
                     )
 
-                } else {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(220.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        CircularProgressIndicator()
+                    } else {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(220.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            ScavengerLoader()
+                        }
                     }
-                }
 
                 if (showFullscreen && downloadUrl != null) {
                     Dialog(onDismissRequest = { showFullscreen = false }) {

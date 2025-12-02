@@ -1,6 +1,7 @@
 package com.aark.sfuscavenger.ui.history
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.clickable
 import android.net.Uri
@@ -54,6 +55,9 @@ import androidx.navigation.NavController
 import androidx.navigation.compose.currentBackStackEntryAsState
 import com.aark.sfuscavenger.ui.theme.LightBeige
 import com.aark.sfuscavenger.ui.theme.Maroon
+import com.aark.sfuscavenger.ui.theme.ScavengerLoader
+import com.aark.sfuscavenger.ui.theme.ScavengerText
+import com.aark.sfuscavenger.ui.theme.ScavengerBackgroundBrush
 
 @Composable
 fun HistoryScreen(
@@ -61,10 +65,7 @@ fun HistoryScreen(
     viewModel: HistoryViewModel = viewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
-    val background = Brush.verticalGradient(
-        listOf(Color(0xFFF7F1EA), Color(0xFFF1E5DB))
-    )
-
+    
     // refresh whenever go to another screen
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
@@ -78,7 +79,7 @@ fun HistoryScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(background)
+            .background(ScavengerBackgroundBrush)
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
             HistoryHeader(viewModel = viewModel)
@@ -110,7 +111,7 @@ private fun HistoryHeader(
     var showSearchBar by rememberSaveable { mutableStateOf(false) }
     val uiState by viewModel.uiState.collectAsState()
     val searchQuery = uiState.searchQuery
-    
+
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -122,11 +123,9 @@ private fun HistoryHeader(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(
+            ScavengerText(
                 text = "Previous Games",
-                color = Maroon,
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.Bold
+                style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold)
             )
             IconButton(onClick = { showSearchBar = !showSearchBar }) {
                 Icon(
@@ -136,17 +135,17 @@ private fun HistoryHeader(
                 )
             }
         }
-        
+
         // Show search bar when toggled
         if (showSearchBar) {
             TextField(
                 value = searchQuery,
                 onValueChange = { viewModel.setSearchQuery(it) },
-                placeholder = { 
+                placeholder = {
                     Text(
                         "Search game name...",
                         color = Color.Gray
-                    ) 
+                    )
                 },
                 leadingIcon = {
                     Icon(
@@ -191,17 +190,17 @@ fun HistorySearchBar(
     var showSearchBar by rememberSaveable { mutableStateOf(false) }
     val uiState by viewModel.uiState.collectAsState()
     val searchQuery = uiState.searchQuery
-    
+
     if (showSearchBar) {
         // Search bar
         TextField(
             value = searchQuery,
             onValueChange = { viewModel.setSearchQuery(it) },
-            placeholder = { 
+            placeholder = {
                 Text(
                     "Search game name...",
                     color = Color.Gray
-                ) 
+                )
             },
             leadingIcon = {
                 Icon(
@@ -221,7 +220,7 @@ fun HistorySearchBar(
                             )
                         }
                     }
-                    IconButton(onClick = { 
+                    IconButton(onClick = {
                         showSearchBar = false
                         viewModel.setSearchQuery("")
                     }) {
@@ -278,7 +277,7 @@ private fun HistoryLoading() {
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Top
     ) {
-        CircularProgressIndicator(color = Maroon)
+        ScavengerLoader()
         Spacer(modifier = Modifier.height(12.dp))
         Text("Loading history…")
     }
@@ -350,37 +349,42 @@ private fun HistoryCardItem(
     card: HistoryCard,
     onClick: () -> Unit
 ) {
-    val shape = RoundedCornerShape(24.dp)
+    val shape = RoundedCornerShape(18.dp)
     val interactionSource = remember { MutableInteractionSource() }
     Surface(
         modifier = Modifier
             .fillMaxWidth()
-            .shadow(elevation = 8.dp, shape = shape, clip = false)
+            .shadow(elevation = 4.dp, shape = shape, clip = false)
             .clip(shape)
             .clickable(
                 interactionSource = interactionSource,
                 indication = LocalIndication.current,
                 onClick = onClick
+            )
+            .border(
+                width = 1.dp,
+                color = Color(0xFFE1D5CD),
+                shape = shape
             ),
-        color = Color(0xFFFDF8F2)
+        color = Color.White.copy(alpha = 0.95f)
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 20.dp, vertical = 18.dp),
+                .padding(horizontal = 14.dp, vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(
+            ScavengerText(
                 text = card.title,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
+                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
+                color = Color.Black,
                 modifier = Modifier.weight(1f)
             )
             Text(
                 text = card.placement,
-                color = Maroon,
+                color = Color.Gray,
                 style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.Bold
+                fontWeight = FontWeight.Normal
             )
         }
     }

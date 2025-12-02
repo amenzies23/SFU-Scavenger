@@ -5,6 +5,8 @@ import android.content.pm.PackageManager
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -34,6 +36,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Box
@@ -48,6 +51,10 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.sp
 import com.google.firebase.storage.FirebaseStorage
 import kotlinx.coroutines.tasks.await
+import com.aark.sfuscavenger.ui.theme.ScavengerLoader
+import com.aark.sfuscavenger.ui.theme.ScavengerDialog
+import com.aark.sfuscavenger.ui.theme.Maroon
+import com.aark.sfuscavenger.ui.theme.Beige
 
 @Composable
 fun SharedMap(
@@ -151,7 +158,10 @@ fun MapScreen(
             modifier = Modifier
                 .fillMaxWidth()
                 .aspectRatio(5f / 8f)
-                .clip(RoundedCornerShape(16.dp))
+                .shadow(16.dp, RoundedCornerShape(28.dp))
+                .border(BorderStroke(3.dp, Beige.copy(alpha = 0.9f)), RoundedCornerShape(28.dp))
+                .clip(RoundedCornerShape(28.dp))
+                .background(Beige.copy(alpha = 0.2f))
         ) {
             SharedMap {
                 uiState.submissions.forEach { submission ->
@@ -184,7 +194,7 @@ fun MapScreen(
     }
 
     if (uiState.loading) {
-        CircularProgressIndicator()
+        ScavengerLoader()
     }
 
     uiState.selectedSubmission?.let { sub ->
@@ -207,15 +217,14 @@ private fun SubmissionDialog(
     imageError: String?,
     onDismiss: () -> Unit
 ) {
-    AlertDialog(
+    ScavengerDialog(
         onDismissRequest = onDismiss,
-        containerColor = Color(0xFFF3ECE7),
+        title = "Task submission",
         confirmButton = {
             TextButton(onClick = onDismiss) {
-                Text("Close", color = Color(0xFF7B1F1F))
+                Text("Close", color = Maroon)
             }
         },
-        title = { Text(text = "Task submission") },
         text = {
             Column {
                 // Task info
@@ -224,7 +233,7 @@ private fun SubmissionDialog(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        CircularProgressIndicator(modifier = Modifier.size(16.dp))
+                        ScavengerLoader(modifier = Modifier.size(16.dp))
                         Text("Loading task details…")
                     }
                 } else {
@@ -293,7 +302,7 @@ private fun SubmissionPhotoPreview(
         when {
             imageUrl == null && error == null -> {
                 // still loading
-                CircularProgressIndicator(modifier = Modifier.size(32.dp))
+                ScavengerLoader(modifier = Modifier.size(32.dp))
             }
             error != null -> {
                 Text(

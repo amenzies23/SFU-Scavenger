@@ -6,6 +6,7 @@ import com.aark.sfuscavenger.data.models.Team
 import com.aark.sfuscavenger.data.models.TeamSummary
 import com.google.firebase.Timestamp
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.DocumentReference
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.ListenerRegistration
@@ -86,11 +87,17 @@ class TeamRepository(
             .document(gameId)
             .collection("teams")
 
+        val normalizedName = teamName.trim()
+        if (normalizedName.isEmpty()) {
+            throw IllegalArgumentException("Team name cannot be blank")
+        }
+        ensureUniqueTeamName(gameId, normalizedName)
+
         val newTeamRef = teamsColl.document()
 
         val team = Team(
             id = newTeamRef.id,
-            name = teamName.trim(),
+            name = normalizedName,
             memberCount = 1,
             createdAt = Timestamp.now()
         )
@@ -159,21 +166,8 @@ class TeamRepository(
         val snapshot = teamsRef.get().await()
 
         for (doc in snapshot.documents) {
-            val memberRef = doc.reference.collection("members").document(uid)
-            val memberSnap = memberRef.get().await()
-
-            if (memberSnap.exists()) {
-                // Remove member
-                memberRef.delete().await()
-
-                // Decrement memberCount
-                doc.reference.update(
-                    "memberCount",
-                    FieldValue.increment(-1)
-                ).await()
-
-                return
-            }
+            val removed = removeMemberFromTeam(doc.reference, uid)
+            if (removed) return
         }
     }
 
@@ -211,23 +205,84 @@ class TeamRepository(
 
         for (doc in snapshot.documents) {
             if (doc.id == exceptTeamId) continue
+            removeMemberFromTeam(doc.reference, uid)
+        }
+    }
 
-            val memberRef = doc.reference
+    private suspend fun ensureUniqueTeamName(gameId: String, desiredName: String) {
+        val teamsColl = db.collection("games")
+            .document(gameId)
+            .collection("teams")
+
+        val snapshot = teamsColl.get().await()
+        val duplicateExists = snapshot.documents.any { doc ->
+            val existingName = doc.getString("name").orEmpty().trim()
+            existingName.equals(desiredName, ignoreCase = true)
+        }
+
+        if (duplicateExists) {
+            throw IllegalArgumentException("That team name is already taken.")
+        }
+    }
+
+    private suspend fun removeMemberFromTeam(
+        teamRef: DocumentReference,
+        uid: String
+    ): Boolean {
+        var deletedInTransaction = false
+
+        val removed = try {
+            db.runTransaction { tx ->
+                val memberRef = teamRef.collection("members").document(uid)
+                val memberSnap = tx.get(memberRef)
+                if (!memberSnap.exists()) {
+                    return@runTransaction false
+                }
+
+                val teamSnap = tx.get(teamRef)
+                if (!teamSnap.exists()) {
+                    return@runTransaction false
+                }
+
+                tx.delete(memberRef)
+
+                val currentCount = teamSnap.getLong("memberCount") ?: 0L
+                val newCount = if (currentCount > 0L) currentCount - 1L else 0L
+
+                if (newCount <= 0L) {
+                    tx.delete(teamRef)
+                    deletedInTransaction = true
+                } else {
+                    tx.update(teamRef, "memberCount", newCount)
+                }
+
+                true
+            }.await()
+        } catch (e: Exception) {
+            Log.w(TAG, "removeMemberFromTeam: failed for team=${teamRef.id}", e)
+            false
+        }
+
+        if (removed && !deletedInTransaction) {
+            deleteTeamIfNoMembers(teamRef)
+        }
+
+        return removed
+    }
+
+    private suspend fun deleteTeamIfNoMembers(teamRef: DocumentReference) {
+        try {
+            val remainingMembers = teamRef
                 .collection("members")
-                .document(uid)
+                .limit(1)
+                .get()
+                .await()
 
-            val memberSnap = memberRef.get().await()
-
-            if (memberSnap.exists()) {
-                // Remove membership
-                memberRef.delete().await()
-
-                // Decrement memberCount
-                doc.reference.update(
-                    "memberCount",
-                    FieldValue.increment(-1)
-                ).await()
+            if (remainingMembers.isEmpty) {
+                teamRef.delete().await()
             }
+        } catch (e: Exception) {
+            Log.w(TAG, "deleteTeamIfNoMembers: failed for team=${teamRef.id}", e)
         }
     }
 

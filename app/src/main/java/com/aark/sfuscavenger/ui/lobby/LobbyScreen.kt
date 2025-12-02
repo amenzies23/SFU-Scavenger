@@ -11,7 +11,9 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.MailOutline
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.PersonAdd
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -27,10 +29,14 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.aark.sfuscavenger.ui.theme.Beige
 import com.aark.sfuscavenger.ui.theme.Black
+import com.aark.sfuscavenger.ui.theme.ScavengerLoader
+import com.aark.sfuscavenger.ui.theme.ScavengerDialog
 import com.aark.sfuscavenger.ui.theme.Maroon
 import com.aark.sfuscavenger.ui.theme.White
 import coil.compose.AsyncImage
 import androidx.compose.ui.layout.ContentScale
+import com.aark.sfuscavenger.ui.theme.ErrorBanner
+import com.aark.sfuscavenger.ui.theme.ScavengerTextField
 
 
 @Composable
@@ -56,8 +62,10 @@ fun LobbyScreen(
     }
 
     Surface(
-        modifier = Modifier.fillMaxSize(),
-        color = Color(0xFFF3ECE7)
+        modifier = Modifier
+            .fillMaxSize()
+            .navigationBarsPadding(),
+        color = Color(0xFFF3ECE7),
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
 
@@ -77,9 +85,9 @@ fun LobbyScreen(
                 LobbyTopBar(
                     isHost = state.isHost,
                     gameName = state.gameName,
-                    joinCode = state.joinCode
+                    joinCode = state.joinCode,
+                    onBackClick = { navController.popBackStack() }
                 )
-
 
                 Spacer(modifier = Modifier.height(8.dp))
 
@@ -90,15 +98,13 @@ fun LobbyScreen(
                             .weight(1f),
                         contentAlignment = Alignment.Center
                     ) {
-                        CircularProgressIndicator()
+                        ScavengerLoader()
                     }
                 } else {
-                    if (state.error != null) {
-                        Text(
-                            text = state.error ?: "",
-                            color = Color.Red,
-                            fontSize = 14.sp,
-                            modifier = Modifier.padding(vertical = 4.dp)
+                    state.error?.let { errorMessage ->
+                        ErrorBanner(
+                            message = errorMessage,
+                            modifier = Modifier.padding(vertical = 8.dp)
                         )
                     }
 
@@ -111,17 +117,22 @@ fun LobbyScreen(
                         onStartGame = { viewModel.startGame() }
 
                     )
+
+                    Button(
+                        onClick = { navController.navigate("home") },
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Maroon,
+                            contentColor = White
+                        ),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(50))
+                    ) {
+                        Text("Back to Home", fontWeight = FontWeight.Bold)
+                    }
+
                 }
             }
-
-            Icon(
-                imageVector = Icons.Default.MailOutline,
-                contentDescription = "Lobby chat",
-                tint = Maroon,
-                modifier = Modifier
-                    .align(Alignment.BottomEnd)
-                    .padding(24.dp)
-            )
         }
     }
 }
@@ -130,7 +141,8 @@ fun LobbyScreen(
 private fun LobbyTopBar(
     isHost: Boolean,
     gameName: String,
-    joinCode: String
+    joinCode: String,
+    onBackClick: () -> Unit
 ) {
     Row(
         modifier = Modifier
@@ -138,14 +150,17 @@ private fun LobbyTopBar(
             .padding(top = 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Column(modifier = Modifier.weight(1f)) {
-
-            Text(
-                text = if (isHost) "Lobby (Host)" else "Lobby",
-                fontSize = 28.sp,
-                fontWeight = FontWeight.Bold,
-                color = Black
+        IconButton(onClick = onBackClick) {
+            Icon(
+                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                contentDescription = "Back",
+                tint = Maroon
             )
+        }
+
+        Spacer(modifier = Modifier.width(8.dp))
+
+        Column(modifier = Modifier.weight(1f)) {
 
             Text(
                 text = gameName,
@@ -326,6 +341,8 @@ private fun LobbyContent(
             }
         )
     }
+
+
 }
 
 @Composable
@@ -336,8 +353,7 @@ private fun TeamCard(
     canJoin: Boolean,
     onClick: () -> Unit
 ) {
-    val backgroundColor =
-        if (isSelected) Color(0xFFFFF4EC) else Color(0xFFD3C5BB)
+    val backgroundColor = Color(0xFFFFF4EC)
 
     Card(
         modifier = Modifier
@@ -349,7 +365,7 @@ private fun TeamCard(
                 interactionSource = remember { MutableInteractionSource() }
             ) { onClick() },
         colors = CardDefaults.cardColors(containerColor = backgroundColor),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 6.dp)
     ) {
 
         Column(
@@ -420,13 +436,7 @@ private fun TeamCard(
                 }
             }
 
-            if (team.members.isEmpty()) {
-                Text(
-                    "No players yet",
-                    fontSize = 14.sp,
-                    color = Black.copy(alpha = 0.7f)
-                )
-            } else {
+            if (!team.members.isEmpty()) {
                 Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                     team.members.forEach { name ->
                         Text("• $name", fontSize = 14.sp, color = Black)
@@ -444,18 +454,19 @@ private fun CreateTeamDialog(
 ) {
     var teamName by remember { mutableStateOf("") }
 
-    AlertDialog(
+    ScavengerDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Create Team") },
+        title = "Create Team",
         text = {
             Column {
                 Text("Give your team a name")
                 Spacer(Modifier.height(8.dp))
-                OutlinedTextField(
+                ScavengerTextField(
                     value = teamName,
                     onValueChange = { teamName = it },
-                    singleLine = true,
-                    label = { Text("Team name") }
+                    label = "Team name",
+                    placeholder = "Team name",
+                    modifier = Modifier.fillMaxWidth()
                 )
             }
         },
@@ -464,11 +475,11 @@ private fun CreateTeamDialog(
                 onClick = { if (teamName.isNotBlank()) onConfirm(teamName) },
                 enabled = teamName.isNotBlank()
             ) {
-                Text("Create")
+                Text("Create", color = Maroon)
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancel") }
+            TextButton(onClick = onDismiss) { Text("Cancel", color = Maroon) }
         }
     )
 }
