@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Text
@@ -34,6 +33,7 @@ import com.aark.sfuscavenger.ui.theme.Black
 import com.aark.sfuscavenger.ui.theme.LightBeige
 import com.aark.sfuscavenger.ui.theme.Maroon
 import com.aark.sfuscavenger.ui.theme.White
+import com.aark.sfuscavenger.ui.theme.ScavengerDialog
 import com.google.android.gms.maps.model.BitmapDescriptorFactory
 import com.google.android.gms.maps.model.LatLng
 import com.google.maps.android.compose.Marker
@@ -168,16 +168,11 @@ private fun HomeGameJoinDialog(
         }
     }
 
-    AlertDialog(
+    ScavengerDialog(
         onDismissRequest = onDismiss,
+        title = game.name,
         containerColor = LightBeige,
-        title = {
-            Text(
-                text = game.name,
-                fontWeight = FontWeight.Bold,
-                color = Black
-            )
-        },
+        titleContentColor = Black,
         text = {
             Column {
                 if (!game.description.isNullOrBlank()) {

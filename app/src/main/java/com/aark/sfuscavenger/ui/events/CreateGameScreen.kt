@@ -81,6 +81,7 @@ import com.aark.sfuscavenger.ui.theme.DarkOrange
 import com.aark.sfuscavenger.ui.theme.LightBeige
 import com.aark.sfuscavenger.ui.theme.Maroon
 import com.aark.sfuscavenger.ui.theme.White
+import com.aark.sfuscavenger.ui.theme.ScavengerDialog
 import com.google.android.libraries.places.api.Places
 import com.google.android.libraries.places.api.model.Place
 import com.google.android.libraries.places.widget.Autocomplete
@@ -460,10 +461,12 @@ private fun TaskCard(
 
     // Show success dialog
     if (showSaveSuccessDialog) {
-        AlertDialog(
+        ScavengerDialog(
             onDismissRequest = { showSaveSuccessDialog = false },
-            title = { Text("QR Code Saved") },
-            text = { Text("QR code has been saved to your gallery in the 'QR Codes' folder.") },
+            title = "QR Code Saved",
+            text = {
+                Text("QR code has been saved to your gallery in the 'QR Codes' folder.")
+            },
             confirmButton = {
                 TextButton(onClick = { showSaveSuccessDialog = false }) {
                     Text("OK")
@@ -831,9 +834,9 @@ private fun DateTimePicker(
             initialMinute = calendar.get(Calendar.MINUTE)
         )
 
-        AlertDialog(
+        ScavengerDialog(
             onDismissRequest = { showTimePicker = false },
-            title = { Text("Select Time") },
+            title = "Select Time",
             text = {
                 TimePicker(state = timePickerState)
             },
