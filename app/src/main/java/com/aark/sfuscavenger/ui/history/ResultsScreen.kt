@@ -42,7 +42,8 @@ fun ResultsScreen(
     navController: NavController,
     gameId: String,
     teamId: String?,
-    onBackToHome: () -> Unit = {}
+    onBackToHome: () -> Unit = {},
+    onViewLeaderboard: (() -> Unit)? = null
 ) {
     val gameRepository = remember { GameRepository() }
     val teamRepository = remember { TeamRepository() }
@@ -215,7 +216,9 @@ fun ResultsScreen(
                     item {
                         Spacer(modifier = Modifier.height(12.dp))
                         Button(
-                            onClick = { navController.navigate("placement/$gameId") },
+                            onClick = { 
+                                onViewLeaderboard?.invoke() ?: navController.navigate("placement/$gameId") 
+                            },
                             modifier = Modifier.fillMaxWidth(),
                             colors = ButtonDefaults.buttonColors(
                                 containerColor = Maroon,

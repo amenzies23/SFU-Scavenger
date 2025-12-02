@@ -58,11 +58,6 @@ fun LeaderboardScreen(
             .background(ScavengerBackgroundBrush)
             .padding(horizontal = 16.dp, vertical = 24.dp)
     ) {
-        Text(
-            text = "Leaderboard",
-            style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold),
-            color = Black
-        )
         Spacer(modifier = Modifier.height(4.dp))
         Text(
             text = "Live standings for every team in this lobby.",

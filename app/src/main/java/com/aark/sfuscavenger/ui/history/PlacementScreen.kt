@@ -64,7 +64,8 @@ data class PlacementUser(
 @Composable
 fun PlacementScreen(
     navController: NavController,
-    gameId: String
+    gameId: String,
+    onNavigateHome: (() -> Unit)? = null
 ) {
     val gameRepository = remember { GameRepository() }
     val teamRepository = remember { TeamRepository() }
@@ -190,8 +191,12 @@ fun PlacementScreen(
                     
                     Button(
                         onClick = { 
-                            navController.navigate("home") {
-                                popUpTo("home") { inclusive = true }
+                            if (onNavigateHome != null) {
+                                onNavigateHome()
+                            } else {
+                                navController.navigate("home") {
+                                    popUpTo("home") { inclusive = true }
+                                }
                             }
                         },
                         modifier = Modifier

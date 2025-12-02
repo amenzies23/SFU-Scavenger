@@ -58,6 +58,11 @@ fun LobbyScreen(
                 putExtra("gameId", state.gameId)
             }
             context.startActivity(intent)
+
+            navController.navigate("home") {
+                popUpTo("home") { inclusive = true }
+                launchSingleTop = true
+            }
         }
     }
 
