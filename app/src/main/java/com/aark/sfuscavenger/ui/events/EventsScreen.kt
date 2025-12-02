@@ -472,12 +472,12 @@ fun JoinByCodeRow(
             .padding(vertical = 8.dp)
             .fillMaxWidth()
             .clip(RoundedCornerShape(16.dp))
-            .background(Color.White)
-            .border(
-                width = 1.dp,
-                color = Color(0xFFE1D5CD),
-                shape = RoundedCornerShape(16.dp)
-            )
+            .background(LightBeige)
+//            .border(
+//                width = 1.dp,
+//                color = Color(0xFFE1D5CD),
+//                shape = RoundedCornerShape(16.dp)
+//            )
             .padding(horizontal = 12.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
