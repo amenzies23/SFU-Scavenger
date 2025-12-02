@@ -208,7 +208,7 @@ fun ResultsScreen(
 
             // Fixed bottom section
             BottomActionButtons(
-                onNavigateLeaderboard = { navController.navigate("placement/$gameId") },
+                onNavigateLeaderboard = onViewLeaderboard ?: { navController.navigate("placement/$gameId") },
                 onBackHome = {
                     navController.popBackStack()
                     onBackToHome()
