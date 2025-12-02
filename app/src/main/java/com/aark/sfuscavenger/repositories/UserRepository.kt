@@ -21,11 +21,15 @@ class UserRepository(
 
     private val users = firestore.collection("users")
 
-    private fun currentUid(): String =
-        auth.currentUser?.uid ?: error("User not logged in")
+    private fun currentUidOrNull(): String? = auth.currentUser?.uid
 
-    suspend fun fetchUser(): User? =
-        users.document(currentUid()).get().await().toObject(User::class.java)
+    private fun currentUid(): String =
+        currentUidOrNull() ?: error("User not logged in")
+
+    suspend fun fetchUser(): User? {
+        val uid = currentUidOrNull() ?: return null
+        return users.document(uid).get().await().toObject(User::class.java)
+    }
 
     suspend fun fetchUserById(userId: String): User? =
         users.document(userId).get().await().toObject(User::class.java)
@@ -74,10 +78,8 @@ class UserRepository(
      * @return List of friends with their profile information
      */
     suspend fun fetchFriends(limit: Long = 0): List<Friend> {
-        val currentUserId = currentUid()
+        val currentUserId = currentUidOrNull() ?: return emptyList()
         val friendIds = getFriendIds(currentUserId, limit)
-        
-        // Convert friend IDs to Friend objects with full profile info
         return friendIds.mapNotNull { friendId ->
             convertUserToFriend(friendId)
         }
@@ -128,8 +130,9 @@ class UserRepository(
      * @param userId the member we want to check the friends of 
      * @return List of Friend objects with profile information
      */
-    suspend fun getFriendsList(userId: String = currentUid()): List<Friend> {
-        val friendIds = getFriendIds(userId, limit = 0)
+    suspend fun getFriendsList(userId: String? = currentUidOrNull()): List<Friend> {
+        val resolvedUserId = userId ?: return emptyList()
+        val friendIds = getFriendIds(resolvedUserId, limit = 0)
         return friendIds.mapNotNull { friendId ->
             convertUserToFriend(friendId)
         }
@@ -161,9 +164,10 @@ class UserRepository(
         return ref.downloadUrl.await().toString()
     }
 
-    suspend fun getMembershipsForUser(userId: String = currentUid()): List<GameMember> {
+    suspend fun getMembershipsForUser(userId: String? = currentUidOrNull()): List<GameMember> {
+        val resolvedUserId = userId ?: return emptyList()
         val snapshot = users
-            .document(userId)
+            .document(resolvedUserId)
             .collection("memberships")
             .get()
             .await()
@@ -175,7 +179,8 @@ class UserRepository(
     }
 
     private suspend fun updateUserFields(fields: Map<String, Any?>) {
-        users.document(currentUid())
+        val uid = currentUidOrNull() ?: return
+        users.document(uid)
             .set(fields, SetOptions.merge())
             .await()
     }

@@ -1,8 +1,13 @@
 package com.aark.sfuscavenger.ui.profile
 
+import android.Manifest
 import android.net.Uri
+import android.os.Build
+import android.widget.Toast
+import android.content.pm.PackageManager
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -15,8 +20,10 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.AlertDialog
@@ -25,7 +32,6 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.TextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -56,8 +62,17 @@ import coil.compose.AsyncImage
 import com.aark.sfuscavenger.data.models.Friend
 import com.aark.sfuscavenger.ui.login.AuthViewModel
 import com.aark.sfuscavenger.ui.theme.AppColors
+import com.aark.sfuscavenger.ui.theme.ScavengerDialog
 import com.aark.sfuscavenger.ui.theme.Maroon
+import com.aark.sfuscavenger.ui.theme.ScavengerTextField
 import com.aark.sfuscavenger.ui.theme.White
+import androidx.compose.ui.platform.LocalContext
+import androidx.core.content.ContextCompat
+import androidx.core.content.FileProvider
+import java.io.File
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 @Composable
 fun ProfileScreen(
@@ -126,6 +141,7 @@ fun ProfileInformation(profileState: ProfileState) {
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         // Determine background color for profile picture
+        // if no profile picture, it is red.
         val profileBackgroundColor: Color
         if (profileState.profilePicture.isNullOrEmpty()) {
             profileBackgroundColor = AppColors.Red
@@ -225,7 +241,7 @@ fun ProfileInformation(profileState: ProfileState) {
                             .clip(RoundedCornerShape(16.dp))
                     )
                     
-                    // Text showing XP / Max XP (centered in bar for visibility)
+                    // Text showing XP / Max XP 
                     Text(
                         text = "${profileState.totalXP} / ${maxXP} xp",
                         fontSize = 12.sp,
@@ -273,6 +289,67 @@ fun ProfileSettingsDialog(
         mutableStateOf(false)
     }
     
+    val context = LocalContext.current
+    var tempImageUri by rememberSaveable { mutableStateOf<Uri?>(null) }
+    var showImageSourceSelection by remember { mutableStateOf(false) }
+
+    var pendingPermissionAction by remember { mutableStateOf<(() -> Unit)?>(null) }
+    var pendingPermissionDeniedMessage by remember { mutableStateOf<String?>(null) }
+
+    val permissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestMultiplePermissions()
+    ) { permissions ->
+        val granted = permissions.values.all { it }
+        val action = pendingPermissionAction
+        val deniedMessage = pendingPermissionDeniedMessage
+        pendingPermissionAction = null
+        pendingPermissionDeniedMessage = null
+
+        if (granted) {
+            action?.invoke()
+        } else {
+            deniedMessage?.let {
+                Toast.makeText(context, it, Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+    // ask user for permissions
+    fun requestPermissions(
+        permissions: Array<String>,
+        deniedMessage: String,
+        onGranted: () -> Unit
+    ) {
+        if (permissions.isEmpty()) {
+            onGranted()
+            return
+        }
+
+        val missingPermissions = permissions.filter {
+            ContextCompat.checkSelfPermission(context, it) != PackageManager.PERMISSION_GRANTED
+        }
+
+        if (missingPermissions.isEmpty()) {
+            onGranted()
+
+        } else {
+            pendingPermissionAction = onGranted
+            pendingPermissionDeniedMessage = deniedMessage
+            permissionLauncher.launch(permissions)
+        }
+    }
+
+    val cameraPermissions = arrayOf(Manifest.permission.CAMERA)
+
+    @Suppress("DEPRECATION")
+    val galleryPermissions = arrayOf(
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU)
+            Manifest.permission.READ_MEDIA_IMAGES
+        else
+            Manifest.permission.READ_EXTERNAL_STORAGE
+    )
+
+
     val imagePickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
     ) { uri ->
@@ -281,63 +358,135 @@ fun ProfileSettingsDialog(
             removePhoto = false
         }
     }
+
+    val cameraLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.TakePicture()
+    ) { success ->
+        if (success && tempImageUri != null) {
+            localImageUri = tempImageUri
+            removePhoto = false
+        }
+    }
+
+    fun createTempPictureUri(): Uri {
+        val timeStamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
+        val imageFileName = "JPEG_" + timeStamp + "_"
+        val file = File.createTempFile(imageFileName, ".jpg", context.cacheDir)
+        return FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
+    }
+
+    val openCamera: () -> Unit = {
+        showImageSourceSelection = false
+        try {
+            tempImageUri = createTempPictureUri()
+            cameraLauncher.launch(tempImageUri!!)
+        } catch (e: Exception) {
+            Toast.makeText(context, "Unable to open camera.", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    val openGallery: () -> Unit = {
+        showImageSourceSelection = false
+        imagePickerLauncher.launch("image/*")
+    }
+
     val previewImage = when {
         localImageUri != null -> localImageUri.toString()
         removePhoto -> null
         else -> currentState.profilePicture
     }
 
-    AlertDialog(
+    if (showImageSourceSelection) {
+        ScavengerDialog(
+            onDismissRequest = { showImageSourceSelection = false },
+            title = "Choose Image Source",
+            text = {
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Button(
+                        onClick = {
+                            requestPermissions(
+                                cameraPermissions,
+                                "Camera permission is required to take a photo.",
+                                openCamera
+                            )
+                        },
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Maroon,
+                            contentColor = White
+                        ),
+                        modifier = Modifier.fillMaxWidth()
+                    ) { 
+                        Text("Camera") 
+                    }
+                    Button(
+                        onClick = {
+                            requestPermissions(
+                                galleryPermissions,
+                                "Photo access is required to choose from gallery.",
+                                openGallery
+                            )
+                        },
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Maroon,
+                            contentColor = White
+                        ),
+                        modifier = Modifier.fillMaxWidth()
+                    ) { 
+                        Text("Gallery") 
+                    }
+                }
+            },
+            confirmButton = {},
+            dismissButton = {
+                TextButton(
+                    onClick = { showImageSourceSelection = false },
+                    colors = ButtonDefaults.textButtonColors(contentColor = AppColors.Red),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
+
+    ScavengerDialog(
         onDismissRequest = onDismiss,
+        title = "Edit Profile",
         confirmButton = {
             Button(
                 onClick = {
-                    // Save profile (this will upload image to Firebase Storage)
+                    // Save profile (uploads to firebase)
                     onSave(
                         displayNameInput.trim(),
                         usernameInput.trim(),
                         localImageUri,
                         removePhoto
                     )
-                    // Dismiss dialog after save is initiated
-                    // The upload happens asynchronously in the background
                     onDismiss()
                 },
                 colors = ButtonDefaults.buttonColors(
                     containerColor = Maroon,
                     contentColor = White
-                ),
-                modifier = Modifier.fillMaxWidth()
+                )
             ) {
                 Text("Save")
             }
         },
         dismissButton = {
-            Column(
-                modifier = Modifier.fillMaxWidth()
+            TextButton(
+                onClick = onDismiss,
+                colors = ButtonDefaults.textButtonColors(contentColor = AppColors.Red)
             ) {
-                OutlinedButton(
-                    onClick = onLogout,
-                    colors = ButtonDefaults.outlinedButtonColors(contentColor = Maroon),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text("Log Out")
-                }
-                Spacer(modifier = Modifier.height(8.dp))
-                TextButton(
-                    onClick = onDismiss,
-                    colors = ButtonDefaults.textButtonColors(contentColor = AppColors.Red),
-                    modifier = Modifier.align(Alignment.CenterHorizontally)
-                ) {
-                    Text("Cancel")
-                }
+                Text("Cancel")
             }
         },
-        title = { Text("Edit Profile") },
-        containerColor = Color(0xFFFEFAF4),
-        shape = RoundedCornerShape(28.dp),
         text = {
             Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 Column(
@@ -381,14 +530,14 @@ fun ProfileSettingsDialog(
                             .padding(top = 12.dp)
                     ) {
                         Button(
-                            onClick = { imagePickerLauncher.launch("image/*") },
+                            onClick = { showImageSourceSelection = true },
                             colors = ButtonDefaults.buttonColors(
                                 containerColor = Maroon,
                                 contentColor = White
                             ),
                             modifier = Modifier.weight(1f)
                         ) {
-                            Text("Choose Photo")
+                            Text("Change Photo")
                         }
                         OutlinedButton(
                             onClick = {
@@ -396,7 +545,11 @@ fun ProfileSettingsDialog(
                                 removePhoto = true
                             },
                             enabled = previewImage != null,
-                            colors = ButtonDefaults.outlinedButtonColors(contentColor = Maroon),
+                            colors = ButtonDefaults.outlinedButtonColors(
+                                containerColor = Color.Transparent,
+                                contentColor = Maroon
+                            ),
+                            border = BorderStroke(1.dp, Maroon),
                             modifier = Modifier.weight(1f)
                         ) {
                             Text("Remove")
@@ -404,20 +557,31 @@ fun ProfileSettingsDialog(
                     }
                 }
 
-                OutlinedTextField(
+                ScavengerTextField(
                     value = displayNameInput,
                     onValueChange = { displayNameInput = it },
-                    label = { Text("Display Name") },
-                    singleLine = true,
+                    label = "Display Name",
+                    placeholder = "Display Name",
                     modifier = Modifier.fillMaxWidth()
                 )
-                OutlinedTextField(
+                ScavengerTextField(
                     value = usernameInput,
                     onValueChange = { usernameInput = it },
-                    label = { Text("Username") },
-                    singleLine = true,
+                    label = "Username",
+                    placeholder = "Username",
                     modifier = Modifier.fillMaxWidth()
                 )
+                
+                Button(
+                    onClick = onLogout,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = AppColors.Red,
+                        contentColor = White
+                    ),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("Log Out")
+                }
 
             }
         }
@@ -536,69 +700,24 @@ private fun AddFriendDialogContent(
     onDismiss: () -> Unit,
     onClearError: () -> Unit
 ) {
-    AlertDialog(
+    ScavengerDialog(
             onDismissRequest = onDismiss,
-            title = { 
-                Text(
-                    "Add Friend by Username",
-                    fontWeight = FontWeight.Bold,
-                    color = Color.Black
-                ) 
-            },
+            title = "Add Friend by Username",
             text = {
                 Column(
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     // Text field with red outline and beige background
-                    TextField(
+                    ScavengerTextField(
                         value = usernameInput,
                         onValueChange = { 
                             onUsernameInputChange(it)
-                            // Clear error when user starts typing
-                            if (addFriendError != null) {
-                                onClearError()
-                            }
+                            if (addFriendError != null) onClearError()
                         },
-                        label = { 
-                            Text(
-                                "Username",
-                                color = if (addFriendError != null) AppColors.Red else Maroon,
-                                fontWeight = FontWeight.SemiBold
-                            ) 
-                        },
-                        placeholder = { 
-                            Text(
-                                "Enter username",
-                                color = Color.Gray
-                            ) 
-                        },
-                        singleLine = true,
-                        isError = addFriendError != null,
-                        shape = RoundedCornerShape(4.dp),
-                        colors = androidx.compose.material3.TextFieldDefaults.colors(
-                            focusedContainerColor = Color(0xFFFEFAF4),
-                            unfocusedContainerColor = Color(0xFFFEFAF4),
-                            disabledContainerColor = Color(0xFFFEFAF4),
-                            errorContainerColor = Color(0xFFFEFAF4),
-                            focusedIndicatorColor = Color.Transparent,
-                            unfocusedIndicatorColor = Color.Transparent,
-                            disabledIndicatorColor = Color.Transparent,
-                            errorIndicatorColor = Color.Transparent,
-                            focusedLabelColor = Maroon,
-                            unfocusedLabelColor = Maroon,
-                            errorLabelColor = AppColors.Red,
-                            focusedTextColor = Color.Black,
-                            unfocusedTextColor = Color.Black,
-                            errorTextColor = Color.Black,
-                            cursorColor = Maroon
-                        ),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .border(
-                                width = 1.dp,
-                                color = if (addFriendError != null) AppColors.Red else Maroon,
-                                shape = RoundedCornerShape(4.dp)
-                            )
+                        label = "Username",
+                        placeholder = "Enter username",
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true
                     )
                     // Show error message if there is one
                     if (addFriendError != null) {
@@ -636,9 +755,7 @@ private fun AddFriendDialogContent(
                 ) {
                     Text("Cancel")
                 }
-            },
-            containerColor = Color(0xFFFEFAF4),
-            shape = RoundedCornerShape(28.dp)
+            }
         )
 }
 

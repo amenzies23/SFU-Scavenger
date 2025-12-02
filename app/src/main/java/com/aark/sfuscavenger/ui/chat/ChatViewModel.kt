@@ -24,6 +24,7 @@ data class ChatMessageUi(
     val isMine: Boolean,
     val time: String,
     val senderPhotoUrl: String? = null,
+    val hasProfilePicture: Boolean,
 )
 
 data class ChatUiState(
@@ -95,6 +96,7 @@ class ChatViewModel(
                         isMine = (msg.senderId == currentUid),
                         time = timeText,
                         senderPhotoUrl = user?.photoUrl,
+                        hasProfilePicture = user?.photoUrl?.isNotBlank() == true
                     )
                 }
 

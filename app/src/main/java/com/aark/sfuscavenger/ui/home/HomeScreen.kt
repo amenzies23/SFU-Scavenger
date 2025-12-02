@@ -1,6 +1,7 @@
 package com.aark.sfuscavenger.ui.home
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -20,6 +21,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -27,6 +29,7 @@ import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.aark.sfuscavenger.data.models.Game
 import com.aark.sfuscavenger.ui.map.SharedMap
+import com.aark.sfuscavenger.ui.theme.Beige
 import com.aark.sfuscavenger.ui.theme.Black
 import com.aark.sfuscavenger.ui.theme.LightBeige
 import com.aark.sfuscavenger.ui.theme.Maroon
@@ -55,7 +58,7 @@ fun HomeScreen(
         Spacer(modifier = Modifier.height(16.dp))
 
         Text(
-            text = "Games map",
+            text = "Games Map",
             fontSize = 16.sp,
             fontWeight = FontWeight.SemiBold,
             color = Color.Black,
@@ -93,7 +96,14 @@ private fun HomeGamesMap(
 ) {
     Box(
         modifier = modifier
-            .clip(RoundedCornerShape(16.dp))
+            .shadow(elevation = 12.dp, shape = RoundedCornerShape(28.dp))
+            .border(
+                width = 3.dp,
+                color = Beige.copy(alpha = 0.9f),
+                shape = RoundedCornerShape(28.dp)
+            )
+            .clip(RoundedCornerShape(28.dp))
+            .background(Beige.copy(alpha = 0.2f))
     ) {
         SharedMap {
             games.forEach { game ->
