@@ -30,6 +30,7 @@ import android.location.LocationListener
 import android.location.LocationManager
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlin.coroutines.resume
+import kotlin.text.set
 
 
 // UI models used by the Task screen
@@ -345,6 +346,7 @@ class TaskViewModel(
         val teamId = _state.value.teamId ?: return
         val uid = auth.currentUser?.uid ?: return
         var status = "approved"
+        var points = 0
 
         viewModelScope.launch {
             try {
@@ -356,9 +358,11 @@ class TaskViewModel(
                     .await()
 
                 val task = taskDoc.toObject(Task::class.java)
+                points = task?.points ?: 0
 
                 if (answer != task?.value) {
                     status = "pending"
+                    points = 0
                 }
 
                 val geoPoint = getCurrentLocation(context)
@@ -370,7 +374,7 @@ class TaskViewModel(
                     "status" to status,
                     "text" to answer.trim(),
                     "createdAt" to Timestamp.now(),
-                    "scoreAwarded" to 0
+                    "scoreAwarded" to points
                 )
 
                 // Add geo location if available
@@ -378,13 +382,45 @@ class TaskViewModel(
                     submission["geo"] = geoPoint
                 }
 
-                db.collection("games")
+                // Create the submission document (use explicit doc so we can reference it if needed)
+                val teamSubmissionsRef = db.collection("games")
                     .document(gameId)
                     .collection("teams")
                     .document(teamId)
                     .collection("submissions")
-                    .add(submission)
-                    .await()
+                val submissionDocRef = teamSubmissionsRef.document()
+                submissionDocRef.set(submission).await()
+
+                // If auto-approved, also increment the team score and award XP (same logic as host approval)
+                if (status == "approved" && points > 0) {
+                    val gameRef = db.collection("games").document(gameId)
+                    val teamRef = gameRef.collection("teams").document(teamId)
+
+                    // Transaction to increment team score and set latestSubmissionAt
+                    db.runTransaction { tx ->
+                        tx.update(
+                            teamRef,
+                            mapOf(
+                                "score" to com.google.firebase.firestore.FieldValue.increment(points.toLong()),
+                                "latestSubmissionAt" to com.google.firebase.firestore.FieldValue.serverTimestamp()
+                            )
+                        )
+                        null
+                    }.await()
+
+                    // Award XP to user (half of points rounded up)
+                    val xpToAward = kotlin.math.ceil(points / 2.0).toInt()
+                    val userRepository = UserRepository()
+                    userRepository.addXpToUser(uid, gameId, xpToAward)
+                }
+
+//                db.collection("games")
+//                    .document(gameId)
+//                    .collection("teams")
+//                    .document(teamId)
+//                    .collection("submissions")
+//                    .add(submission)
+//                    .await()
 
             } catch (e: Exception) {
                 _state.update { it.copy(error = "Failed to submit: ${e.message}") }
@@ -448,6 +484,7 @@ class TaskViewModel(
         val teamId = _state.value.teamId ?: return
         val uid = auth.currentUser?.uid ?: return
         var status = "approved"
+        var points = 0
 
         viewModelScope.launch {
             try {
@@ -459,12 +496,21 @@ class TaskViewModel(
                     .await()
 
                 val task = taskDoc.toObject(Task::class.java)
+                points = task?.points ?: 0
 
                 if (scannedValue != task?.value) {
                     status = "rejected"
+                    points = 0
                 }
 
                 val geoPoint = getCurrentLocation(context)
+
+                val teamSubmissionsRef = db.collection("games")
+                    .document(gameId)
+                    .collection("teams")
+                    .document(teamId)
+                    .collection("submissions")
+                val submissionDocRef = teamSubmissionsRef.document()
 
                 val submission = hashMapOf(
                     "taskId" to taskId,
@@ -473,20 +519,41 @@ class TaskViewModel(
                     "status" to status,
                     "text" to scannedValue,
                     "createdAt" to Timestamp.now(),
-                    "scoreAwarded" to 0
+                    "scoreAwarded" to points
                 )
 
                 if (geoPoint != null) {
                     submission["geo"] = geoPoint
                 }
 
-                db.collection("games")
-                    .document(gameId)
-                    .collection("teams")
-                    .document(teamId)
-                    .collection("submissions")
-                    .add(submission)
-                    .await()
+                submissionDocRef.set(submission).await()
+
+                if (status == "approved" && points > 0) {
+                    val gameRef = db.collection("games").document(gameId)
+                    val teamRef = gameRef.collection("teams").document(teamId)
+
+                    db.runTransaction { tx ->
+                        tx.update(
+                            teamRef,
+                            mapOf(
+                                "score" to com.google.firebase.firestore.FieldValue.increment(points.toLong()),
+                                "latestSubmissionAt" to com.google.firebase.firestore.FieldValue.serverTimestamp()
+                            )
+                        )
+                        null
+                    }.await()
+
+                    val xpToAward = kotlin.math.ceil(points / 2.0).toInt()
+                    val userRepository = UserRepository()
+                    userRepository.addXpToUser(uid, gameId, xpToAward)
+                }
+//                db.collection("games")
+//                    .document(gameId)
+//                    .collection("teams")
+//                    .document(teamId)
+//                    .collection("submissions")
+//                    .add(submission)
+//                    .await()
             } catch (e: Exception) {
                 _state.update { it.copy(error = "Failed to submit QR answer: ${e.message}") }
             }
