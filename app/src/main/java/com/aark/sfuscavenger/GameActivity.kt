@@ -1,6 +1,7 @@
 package com.aark.sfuscavenger
 
 import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -17,6 +18,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
@@ -28,11 +30,9 @@ import com.aark.sfuscavenger.ui.GameBottomNavBar
 import com.aark.sfuscavenger.ui.chat.ChatBadgeViewModel
 import com.aark.sfuscavenger.ui.chat.ChatScreen
 import com.aark.sfuscavenger.ui.components.TopBar
-import com.aark.sfuscavenger.ui.leaderboard.LeaderboardScreen
 import com.aark.sfuscavenger.ui.map.MapScreen
 import com.aark.sfuscavenger.ui.tasks.TaskScreen
-import com.aark.sfuscavenger.ui.history.ResultsScreen
-import com.aark.sfuscavenger.ui.history.PlacementScreen
+import com.aark.sfuscavenger.ui.leaderboard.LeaderboardScreen
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.tasks.await
@@ -66,12 +66,14 @@ fun GameApp(
     onExitGame: () -> Unit
 ) {
     val navController = rememberNavController()
+    val context = LocalContext.current
 
     val chatBadgeVm: ChatBadgeViewModel = viewModel()
     val hasUnreadChat by chatBadgeVm.hasUnreadChat.collectAsStateWithLifecycle()
 
     // Observe game status to navigate to results when game ends
     var gameStatus by remember { mutableStateOf<String?>(null) }
+    var hasNavigatedToFinalResults by remember { mutableStateOf(false) }
 
     LaunchedEffect(gameId) {
         chatBadgeVm.start(gameId)
@@ -87,15 +89,7 @@ fun GameApp(
             if (error != null || snapshot == null) return@addSnapshotListener
 
             val status = snapshot.getString("status")
-            val previousStatus = gameStatus
             gameStatus = status
-
-            // Navigate to results when game ends
-            if (previousStatus != null && previousStatus != "ended" && status == "ended") {
-                navController.navigate("results") {
-                    popUpTo("tasks") { inclusive = false }
-                }
-            }
         }
 
         onDispose {
@@ -117,6 +111,28 @@ fun GameApp(
 
     // Hide bottom nav bar on results screen
     val showBottomBar = currentRoute != "results"
+
+    LaunchedEffect(gameStatus, hasNavigatedToFinalResults) {
+        if (!hasNavigatedToFinalResults && gameStatus == "ended") {
+            hasNavigatedToFinalResults = true
+
+            val teamId = try {
+                fetchCurrentUserTeamId(gameId) ?: "none"
+            } catch (e: Exception) {
+                "none"
+            }
+            val encodedGameId = Uri.encode(gameId)
+            val encodedTeamId = Uri.encode(teamId)
+            val route = "results/$encodedGameId/$encodedTeamId"
+
+            val intent = Intent(context, MainActivity::class.java).apply {
+                putExtra(MainActivity.EXTRA_START_ROUTE, route)
+                addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+            }
+            context.startActivity(intent)
+            onExitGame()
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -141,7 +157,7 @@ fun GameApp(
                 GameNavHost(
                     navController = navController,
                     gameId = gameId,
-                    onExitGame = onExitGame,
+                    onGameEnded = { gameStatus = "ended" },
                     modifier = Modifier
                         .padding(innerPadding)
                 )
@@ -154,7 +170,7 @@ fun GameApp(
 private fun GameNavHost(
     navController: NavHostController,
     gameId: String,
-    onExitGame: () -> Unit,
+    onGameEnded: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     NavHost(
@@ -165,11 +181,7 @@ private fun GameNavHost(
         composable("tasks") {
             TaskScreen(
                 gameId = gameId,
-                onEndGame = {
-                    navController.navigate("results") {
-                        popUpTo("tasks") { inclusive = false }
-                    }
-                }
+                onEndGame = onGameEnded
             )
         }
         composable("map") {
@@ -181,52 +193,30 @@ private fun GameNavHost(
         composable("chat") {
             ChatScreen(gameId = gameId)
         }
-        composable("results") {
-            // Fetch the user's team ID
-            var userTeamId by remember { mutableStateOf<String?>(null) }
+    }
+}
 
-            LaunchedEffect(gameId) {
-                val uid = FirebaseAuth.getInstance().currentUser?.uid
-                if (uid != null) {
-                    val teamsSnap = FirebaseFirestore.getInstance()
-                        .collection("games")
-                        .document(gameId)
-                        .collection("teams")
-                        .get()
-                        .await()
+private suspend fun fetchCurrentUserTeamId(gameId: String): String? {
+    val uid = FirebaseAuth.getInstance().currentUser?.uid ?: return null
 
-                    // Find which team the user is in
-                    for (teamDoc in teamsSnap.documents) {
-                        val memberSnap = teamDoc.reference
-                            .collection("members")
-                            .document(uid)
-                            .get()
-                            .await()
+    val teamsSnap = FirebaseFirestore.getInstance()
+        .collection("games")
+        .document(gameId)
+        .collection("teams")
+        .get()
+        .await()
 
-                        if (memberSnap.exists()) {
-                            userTeamId = teamDoc.id
-                            break
-                        }
-                    }
-                }
-            }
+    for (teamDoc in teamsSnap.documents) {
+        val memberSnap = teamDoc.reference
+            .collection("members")
+            .document(uid)
+            .get()
+            .await()
 
-            ResultsScreen(
-                navController = navController,
-                gameId = gameId,
-                teamId = userTeamId,
-                onBackToHome = onExitGame,
-                onViewLeaderboard = {
-                    navController.navigate("placement")
-                }
-            )
-        }
-        composable("placement") {
-            PlacementScreen(
-                navController = navController,
-                gameId = gameId,
-                onNavigateHome = onExitGame
-            )
+        if (memberSnap.exists()) {
+            return teamDoc.id
         }
     }
+
+    return null
 }

@@ -9,7 +9,9 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.State
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -28,7 +30,6 @@ import com.aark.sfuscavenger.ui.login.SignInScreen
 import com.aark.sfuscavenger.ui.login.SignUpScreen
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.core.view.WindowInsetsControllerCompat
 import com.aark.sfuscavenger.ui.login.AuthViewModel
@@ -49,18 +50,37 @@ import com.aark.sfuscavenger.ui.home.HomeScreen
 import com.aark.sfuscavenger.ui.home.HomeViewModel
 
 class MainActivity : ComponentActivity() {
+    private val pendingRoute = mutableStateOf<String?>(null)
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
         installSplashScreen()
+        pendingRoute.value = intent?.getStringExtra(EXTRA_START_ROUTE)
         setContent {
-            SFUScavengerApp()
+            SFUScavengerApp(
+                requestedRouteState = pendingRoute,
+                onConsumeRequestedRoute = { pendingRoute.value = null }
+            )
         }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        pendingRoute.value = intent.getStringExtra(EXTRA_START_ROUTE)
+    }
+
+    companion object {
+        const val EXTRA_START_ROUTE = "extra_start_route"
     }
 }
 
 @Composable
-fun SFUScavengerApp() {
+fun SFUScavengerApp(
+    requestedRouteState: State<String?>? = null,
+    onConsumeRequestedRoute: (() -> Unit)? = null
+) {
     val navController = rememberNavController()
     val vm: AuthViewModel = viewModel()
     val state by vm.state.collectAsStateWithLifecycle()
@@ -77,6 +97,8 @@ fun SFUScavengerApp() {
 
     val historyViewModel: HistoryViewModel? =
         if (isLoggedIn) viewModel(key = "history") else null
+
+    val requestedRoute = requestedRouteState?.value
 
     val topBarTitle: String? = when {
         currentRoute == "home" -> "Home"
@@ -228,6 +250,15 @@ fun SFUScavengerApp() {
                     popUpTo(0) 
                 }
             }
+        }
+    }
+
+    LaunchedEffect(requestedRoute, state.isLoggedIn) {
+        if (!requestedRoute.isNullOrBlank() && state.isLoggedIn) {
+            navController.navigate(requestedRoute) {
+                launchSingleTop = true
+            }
+            onConsumeRequestedRoute?.invoke()
         }
     }
 }
