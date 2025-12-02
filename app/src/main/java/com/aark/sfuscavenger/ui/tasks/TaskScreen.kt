@@ -44,6 +44,10 @@ import androidx.compose.foundation.background
 import com.aark.sfuscavenger.qrcode.QRScanner
 import com.journeyapps.barcodescanner.ScanContract
 import com.journeyapps.barcodescanner.ScanOptions
+import android.Manifest
+import android.content.pm.PackageManager
+import androidx.core.content.ContextCompat
+
 
 
 /**
@@ -458,6 +462,17 @@ private fun PhotoSubmissionDialog(
         takePictureLauncher.launch(uri)
     }
 
+    val cameraPermissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        if (granted) {
+            launchCamera()
+        } else {
+            Toast.makeText(context, "Camera permission denied", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+
     AlertDialog(
         onDismissRequest = { if (!isSubmitting) onDismiss() },
         containerColor = Color(0xFFF3ECE7),
@@ -499,7 +514,18 @@ private fun PhotoSubmissionDialog(
                 Spacer(Modifier.height(16.dp))
 
                 Button(
-                    onClick = { launchCamera() },
+                    onClick = {
+                        val granted = ContextCompat.checkSelfPermission(
+                            context,
+                            Manifest.permission.CAMERA
+                        ) == PackageManager.PERMISSION_GRANTED
+
+                        if (granted) {
+                            launchCamera()
+                        } else {
+                            cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
+                        }
+                    },
                     modifier = Modifier.fillMaxWidth(),
                     colors = ButtonDefaults.buttonColors(containerColor = Maroon),
                     enabled = !isSubmitting
@@ -509,6 +535,7 @@ private fun PhotoSubmissionDialog(
                         color = White
                     )
                 }
+
             }
         },
         confirmButton = {
