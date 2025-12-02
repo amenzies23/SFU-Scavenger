@@ -30,6 +30,7 @@ import com.aark.sfuscavenger.ui.GameBottomNavBar
 import com.aark.sfuscavenger.ui.chat.ChatBadgeViewModel
 import com.aark.sfuscavenger.ui.chat.ChatScreen
 import com.aark.sfuscavenger.ui.components.TopBar
+import com.aark.sfuscavenger.ui.history.PlacementScreen
 import com.aark.sfuscavenger.ui.map.MapScreen
 import com.aark.sfuscavenger.ui.tasks.TaskScreen
 import com.aark.sfuscavenger.ui.leaderboard.LeaderboardScreen
@@ -158,6 +159,7 @@ fun GameApp(
                     navController = navController,
                     gameId = gameId,
                     onGameEnded = { gameStatus = "ended" },
+                    onExitGame = onExitGame,
                     modifier = Modifier
                         .padding(innerPadding)
                 )
@@ -171,6 +173,7 @@ private fun GameNavHost(
     navController: NavHostController,
     gameId: String,
     onGameEnded: () -> Unit,
+    onExitGame: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     NavHost(
@@ -192,6 +195,17 @@ private fun GameNavHost(
         }
         composable("chat") {
             ChatScreen(gameId = gameId)
+        }
+        composable(
+            route = "placement/{gameId}"
+        ) { backStackEntry ->
+            val argGameId = backStackEntry.arguments?.getString("gameId").orEmpty()
+            val resolvedGameId = argGameId.ifBlank { gameId }
+            PlacementScreen(
+                navController = navController,
+                gameId = resolvedGameId,
+                onNavigateHome = onExitGame
+            )
         }
     }
 }
