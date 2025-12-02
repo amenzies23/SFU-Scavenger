@@ -158,7 +158,7 @@ fun SignUpScreen(
                     .border(
                         shape = RoundedCornerShape(10.dp),
                         width = 1.dp,
-                        color = Maroon
+                        color = Black
                     )
 
             )
@@ -197,7 +197,7 @@ fun SignUpScreen(
                     .border(
                         shape = RoundedCornerShape(10.dp),
                         width = 1.dp,
-                        color = Maroon
+                        color = Black
                     )
 
             )

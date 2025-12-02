@@ -163,7 +163,7 @@ fun SignInScreen(
                     .border(
                         shape = RoundedCornerShape(10.dp),
                         width = 1.dp,
-                        color = Maroon
+                        color = Black
                     )
 
             )
@@ -202,10 +202,19 @@ fun SignInScreen(
                     .border(
                         shape = RoundedCornerShape(10.dp),
                         width = 1.dp,
-                        color = Maroon
+                        color = if (error != null) Color.Red else Black
                     )
 
             )
+            if (error != null) {
+                Spacer(modifier = Modifier.height(6.dp))
+                Text(
+                    text = error,
+                    color = Color.Red,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.SemiBold
+                )
+            }
 
             Spacer(modifier = Modifier.height(25.dp))
 
