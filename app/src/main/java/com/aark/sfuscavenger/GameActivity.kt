@@ -32,6 +32,7 @@ import com.aark.sfuscavenger.ui.leaderboard.LeaderboardScreen
 import com.aark.sfuscavenger.ui.map.MapScreen
 import com.aark.sfuscavenger.ui.tasks.TaskScreen
 import com.aark.sfuscavenger.ui.history.ResultsScreen
+import com.aark.sfuscavenger.ui.history.PlacementScreen
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.tasks.await
@@ -214,7 +215,17 @@ private fun GameNavHost(
                 navController = navController,
                 gameId = gameId,
                 teamId = userTeamId,
-                onBackToHome = onExitGame
+                onBackToHome = onExitGame,
+                onViewLeaderboard = {
+                    navController.navigate("placement")
+                }
+            )
+        }
+        composable("placement") {
+            PlacementScreen(
+                navController = navController,
+                gameId = gameId,
+                onNavigateHome = onExitGame
             )
         }
     }
