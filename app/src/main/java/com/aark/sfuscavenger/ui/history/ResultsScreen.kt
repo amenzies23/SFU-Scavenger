@@ -10,6 +10,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material3.*
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -52,7 +53,7 @@ fun ResultsScreen(
     val firestore = remember { FirebaseFirestore.getInstance() }
 
     var gameName by remember { mutableStateOf<String?>(null) }
-    var placement by remember { mutableStateOf<String?>(null) }
+    var placementDisplay by remember { mutableStateOf<PlacementDisplay?>(null) }
     var score by remember { mutableStateOf<Int?>(null) }
     var teamMembers by remember { mutableStateOf<List<User>>(emptyList()) }
     var completedTasks by remember { mutableStateOf<List<CompletedTaskResult>>(emptyList()) }
@@ -66,17 +67,7 @@ fun ResultsScreen(
         if (teamId != null && teamId != "none") {
             val teamSummary = teamRepository.getTeamSummary(gameId, teamId)
             val placementInt = teamSummary?.placement ?: 0
-            
-            placement = if (placementInt > 0) {
-                when (placementInt) {
-                    1 -> "1st place"
-                    2 -> "2nd place"
-                    3 -> "3rd place"
-                    else -> "${placementInt}th place"
-                }
-            } else {
-                "N/A"
-            }
+            placementDisplay = placementInt.toPlacementDisplay()
             score = teamSummary?.score
             
             val membersMap = teamRepository.getTeamMembersWithUserObject(gameId, teamId)
@@ -93,7 +84,7 @@ fun ResultsScreen(
                 completedTasksLoading = false
             }
         } else {
-            placement = "N/A"
+            placementDisplay = null
             score = null
             val currentUserId = auth.currentUser?.uid
             if (currentUserId != null) {
@@ -146,7 +137,7 @@ fun ResultsScreen(
                                 text = "Team: ${teamId?.takeIf { it != "none" } ?: "Not assigned"}",
                                 color = Maroon
                             )
-                            Text(text = "Placement: ${placement ?: "N/A"}")
+                            PlacementText(display = placementDisplay)
                             Text(text = "Score: ${score?.let { "$it pts" } ?: "N/A"}")
                         }
                     }
@@ -233,28 +224,95 @@ fun ResultsScreen(
             }
 
             // Fixed bottom section
-            Surface(
-                modifier = Modifier
-                    .fillMaxWidth(),
-                color = Color.Transparent // Transparent so background shows through, or set a color
-            ) {
-                Button(
-                    onClick = { navController.popBackStack() },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = Color.Transparent,
-                        contentColor = Maroon
-                    ),
-                    border = BorderStroke(1.dp, Maroon)
-                ) {
-                    Text("Back to Home")
+            BottomActionButtons(
+                onNavigateLeaderboard = { navController.navigate("placement/$gameId") },
+                onBackHome = {
+                    navController.popBackStack()
+                    onBackToHome()
                 }
+            )
+        }
+    }
+}
+@Composable
+private fun BottomActionButtons(
+    onNavigateLeaderboard: () -> Unit,
+    onBackHome: () -> Unit
+) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        color = Color.Transparent
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Button(
+                onClick = onNavigateLeaderboard,
+                modifier = Modifier.fillMaxWidth(),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Maroon,
+                    contentColor = Color.White
+                ),
+                shape = RoundedCornerShape(16.dp)
+            ) {
+                Text("View Leaderboard")
+            }
+
+            OutlinedButton(
+                onClick = onBackHome,
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(16.dp),
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = Maroon),
+                border = BorderStroke(1.dp, Maroon)
+            ) {
+                Text("Back to Home")
             }
         }
     }
 }
+
+data class PlacementDisplay(
+    val label: String,
+    val color: Color,
+    val icon: String
+)
+
+private fun Int.toPlacementDisplay(): PlacementDisplay? {
+    if (this <= 0) return null
+    return when (this) {
+        1 -> PlacementDisplay("1st place", Color(0xFFD4AF37), "\uD83E\uDD47") // 🥇
+        2 -> PlacementDisplay("2nd place", Color(0xFFC0C0C0), "\uD83E\uDD48") // 🥈
+        3 -> PlacementDisplay("3rd place", Color(0xFFCD7F32), "\uD83E\uDD49") // 🥉
+        else -> PlacementDisplay("${this}th place", Maroon, "\uD83C\uDFC5")
+    }
+}
+
+@Composable
+private fun PlacementText(display: PlacementDisplay?) {
+    if (display == null) {
+        Text(text = "Placement: N/A")
+        return
+    }
+
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(6.dp)
+    ) {
+        Text(
+            text = display.icon,
+            fontSize = MaterialTheme.typography.titleMedium.fontSize
+        )
+        Text(
+            text = display.label,
+            color = display.color,
+            fontWeight = FontWeight.Bold
+        )
+    }
+}
+
 
 data class CompletedTaskResult(
     val taskName: String,

@@ -29,12 +29,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
-import coil.compose.AsyncImage
 import com.aark.sfuscavenger.ui.theme.Maroon
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -56,7 +54,6 @@ data class PlacementUser(
     val id: String,
     val name: String,
     val score: Int,
-    val photoUrl: String? = null,
     val placement: Int,
     val isTeam: Boolean = false
 )
@@ -95,7 +92,6 @@ fun PlacementScreen(
                     id = team.id,
                     name = team.name,
                     score = team.score,
-                    photoUrl = null,
                     placement = index + 1,
                     isTeam = team.memberCount > 1
                 )
@@ -175,17 +171,37 @@ fun PlacementScreen(
                 Box(
                     modifier = Modifier.weight(1f)
                 ) {
-                    LazyColumn(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(horizontal = 16.dp),
-                        contentPadding = PaddingValues(
-                            bottom = 80.dp
-                        ),
-                        verticalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        items(others) { user ->
-                            LeaderboardItem(user = user)
+                    if (others.isNotEmpty()) {
+                        LazyColumn(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(horizontal = 16.dp),
+                            contentPadding = PaddingValues(
+                                bottom = 80.dp
+                            ),
+                            verticalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            items(others) { user ->
+                                LeaderboardItem(user = user)
+                            }
+                        }
+                    } else {
+                        val winnerName = top3.find { it.placement == 1 }?.name
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(start = 24.dp, end = 24.dp, bottom = 96.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            winnerName?.let {
+                                Text(
+                                    text = "$it wins!",
+                                    style = MaterialTheme.typography.titleLarge,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Maroon,
+                                    textAlign = TextAlign.Center
+                                )
+                            }
                         }
                     }
                     
@@ -304,33 +320,6 @@ fun PodiumItem(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = modifier.width(100.dp)
     ) {
-        if (!user.isTeam) {
-            Box(
-                modifier = Modifier
-                    .size(if (isFirst) 70.dp else 60.dp)
-                    .offset(y = 10.dp)
-                    .zIndex(1f),
-                contentAlignment = Alignment.Center
-            ) {
-                AsyncImage(
-                    model = user.photoUrl,
-                    contentDescription = user.name,
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .clip(CircleShape)
-                        .border(
-                            width = if (isFirst) 3.dp else 0.dp,
-                            color = if (isFirst) rankColor else Color.Transparent,
-                            shape = CircleShape
-                        )
-                        .background(Color.Gray),
-                    contentScale = ContentScale.Crop
-                )
-            }
-        } else {
-            Spacer(modifier = Modifier.height(if (isFirst) 20.dp else 10.dp))
-        }
-
         Text(
             text = user.name,
             fontWeight = FontWeight.Bold,
@@ -340,7 +329,7 @@ fun PodiumItem(
             maxLines = 2,
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier
-                .padding(bottom = 4.dp, start = 4.dp, end = 4.dp)
+                .padding(bottom = 2.dp, start = 3.dp, end = 3.dp)
                 .zIndex(1f)
                 .fillMaxWidth()
         )
@@ -363,19 +352,17 @@ fun PodiumItem(
                     shape = androidx.compose.ui.graphics.RectangleShape
                 )
         ) {
-            if (user.isTeam) {
+            Column(
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .padding(top = 16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
                 Box(
                     modifier = Modifier
-                        .padding(top = 12.dp)
-                        .align(Alignment.TopCenter)
-                        .size(if (isFirst) 50.dp else 40.dp)
+                        .size(if (isFirst) 70.dp else 60.dp)
                         .clip(CircleShape)
-                        .background(rankColor.copy(alpha = 0.8f))
-                        .border(
-                             width = 2.dp,
-                             color = Maroon,
-                             shape = CircleShape
-                        ),
+                        .background(rankColor.copy(alpha = 0.9f)),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
@@ -385,17 +372,15 @@ fun PodiumItem(
                         style = if (isFirst) MaterialTheme.typography.headlineSmall else MaterialTheme.typography.titleLarge
                     )
                 }
-            }
 
-            Text(
-                text = "${user.score} pts",
-                color = Color.White,
-                fontWeight = FontWeight.Bold,
-                style = MaterialTheme.typography.bodyMedium,
-                modifier = Modifier
-                    .align(Alignment.TopCenter)
-                    .padding(top = if (user.isTeam) 64.dp else (24.dp))
-            )
+                Text(
+                    text = "${user.score} pts",
+                    color = Color.White,
+                    fontWeight = FontWeight.Bold,
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier.padding(top = 8.dp)
+                )
+            }
         }
     }
 }
