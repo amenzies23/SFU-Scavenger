@@ -203,23 +203,6 @@ fun ResultsScreen(
                             }
                         }
                     }
-
-                    item {
-                        Spacer(modifier = Modifier.height(12.dp))
-                        Button(
-                            onClick = { 
-                                onViewLeaderboard?.invoke() ?: navController.navigate("placement/$gameId") 
-                            },
-                            modifier = Modifier.fillMaxWidth(),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = Maroon,
-                                contentColor = Color.White
-                            )
-                        ) {
-                            Text("View Leaderboard")
-                        }
-                        Spacer(modifier = Modifier.height(8.dp))
-                    }
                 }
             }
 
